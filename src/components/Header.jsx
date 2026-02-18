@@ -1,0 +1,164 @@
+
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FaBars, FaTimes, FaUserCircle } from "react-icons/fa";
+
+export default function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Detect scroll for styling
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: "Home", path: "/home" },
+    { name: "Schemes", path: "/schemes" },
+    { name: "Transactions", path: "/transactions" },
+  ];
+
+  const isActive = (path) => location.pathname === path;
+
+  return (
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
+          scrolled
+            ? "bg-white/90 backdrop-blur-md shadow-lg py-2 border-b border-amber-100/50"
+            : "bg-white py-4 shadow-sm"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between">
+          {/* Logo */}
+          <div
+            className="flex items-center gap-3 cursor-pointer group"
+            onClick={() => navigate("/home")}
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-700 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 animate-header-logo">
+              K
+            </div>
+            <div>
+              <h1 className="font-bold text-xl text-gray-900 leading-tight group-hover:text-amber-700 transition-colors duration-300">
+                Kalyan
+              </h1>
+              <p className="text-[10px] text-amber-600 font-semibold tracking-wider uppercase">
+                Jewellers
+              </p>
+            </div>
+          </div>
+
+          {/* Desktop Nav - active route highlighted */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => (
+              <button
+                key={link.name}
+                onClick={() => navigate(link.path)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 relative overflow-hidden ${
+                  isActive(link.path)
+                    ? "text-amber-800 bg-gradient-to-r from-amber-100 to-amber-50 shadow-sm ring-1 ring-amber-200/60 scale-[1.02]"
+                    : "text-gray-600 hover:text-amber-700 hover:bg-amber-50/80 hover:scale-[1.02]"
+                }`}
+              >
+                {link.name}
+                {isActive(link.path) && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-amber-500 rounded-full animate-nav-underline" />
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {/* User & Mobile Toggle */}
+          <div className="flex items-center gap-4">
+             {/* Desktop Profile Button */}
+            <button
+               onClick={() => navigate("/profile-edit")}
+               className="hidden md:flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gradient-to-r from-gray-50 to-white text-gray-700 rounded-full hover:shadow-md hover:scale-105 transition-all duration-300 border border-gray-200 group"
+            >
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                 <FaUserCircle size={18} />
+              </div>
+              <span className="text-sm font-medium">Profile</span>
+            </button>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden text-gray-700 p-2 hover:bg-gray-100 rounded-lg transition"
+              onClick={() => setMenuOpen(true)}
+            >
+              <FaBars size={24} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Spacer */}
+      <div className={`transition-all duration-300 ${scrolled ? "h-20" : "h-24"}`} />
+
+      {/* Mobile Sidebar Overlay */}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300 md:hidden ${
+          menuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setMenuOpen(false)}
+      >
+        {/* Sidebar */}
+        <div
+          className={`fixed top-0 right-0 w-[80%] max-w-sm h-full bg-white shadow-2xl transform transition-transform duration-500 ease-out p-6 ${
+            menuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center mb-8 border-b pb-4">
+            <h2 className="text-xl font-bold text-gray-900">Menu</h2>
+            <button
+              onClick={() => setMenuOpen(false)}
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"
+            >
+              <FaTimes size={20} />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {navLinks.map((link, idx) => (
+              <button
+                key={link.name}
+                onClick={() => {
+                  navigate(link.path);
+                  setMenuOpen(false);
+                }}
+                style={{ animationDelay: `${idx * 0.08}s` }}
+                className={`block w-full text-left px-4 py-3 rounded-xl font-medium transition-all duration-300 animate-slide-up opacity-0 [animation-fill-mode:forwards] ${
+                  isActive(link.path)
+                    ? "bg-gradient-to-r from-amber-100 to-amber-50 text-amber-800 border-l-4 border-amber-500 shadow-sm font-semibold"
+                    : "text-gray-600 hover:bg-gray-50 hover:pl-6"
+                }`}
+              >
+                {link.name}
+              </button>
+            ))}
+            
+            <div className="border-t border-gray-100 my-4 pt-4" />
+            
+            <button
+              onClick={() => {
+                navigate("/profile-edit");
+                setMenuOpen(false);
+              }}
+              className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-amber-700 transition animate-slide-up opacity-0 fill-mode-forwards delay-300"
+            >
+              <FaUserCircle size={20} />
+              My Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

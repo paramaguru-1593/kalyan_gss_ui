@@ -1,0 +1,31 @@
+const ApiEndpoits = {
+    login: "/v1/login",
+    logout: "/v1/logout",
+    campaignBucketList: "/v1/campaignBucketList",
+    campaignLeadList: "/v1/campaignLeadList",
+    campaignList: "/v1/campaignList",
+    getLeadDetails: "/v1/getLeadDetails",
+    saveDisposition: "/v1/dispositionSubmit",
+    callHistory: "/v1/callHistory",
+    getCallBackReasonList: "/v1/getCallBackReasonList",
+    getStoreSpocList: "/v1/getStoreDetails",
+    getStoreWiseSpoc: "getStoreWiseSpoc",
+    tataCallInitiate: "tataCallInitiate",
+    initiateVoiceOneCall: "/v1/initiateVoiceOneCall",
+    recentPurchases: "/v1/recentPurchases",
+    agentNotification: "/v1/agentNotification",
+    readNotification: "/v1/read/agentNotification",
+    callStatistics: "/v1/callStatistics",
+    updateProfileDatas: "/v1/updateProfileDatas",
+    // performance section
+    performanceFilterDetail: "/v1/performanceFilterDetail",
+    storeListBasedOnState: "/v1/storeListBasedOnState",
+    performanceDetail: "/v1/performanceDetail",
+    performanceDetailReport: "/v1/performanceDetailReport",
+    branchHeadList: "/v1/branchHeadList",
+    getDispositionList: "/v1/getDispositionList",
+    storeListBasedOnBranchHead: "/v1/storeListBasedOnBranchHead",
+    filterListDetails: "/v1/filterListDetails",
+}
+
+export default ApiEndpoits;
