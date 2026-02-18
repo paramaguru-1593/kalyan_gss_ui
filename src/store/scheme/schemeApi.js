@@ -1,4 +1,4 @@
-import { GET } from "../../api/apiHelper";
+import { GET, POST } from "../../api/apiHelper";
 
 /**
  * Call backend endpoint to fetch schemes by mobile number.
@@ -10,5 +10,15 @@ export const getSchemesByMobileNumber = (mobileNumber) => {
     params: {
       MobileNumber: mobileNumber,
     },
+  });
+};
+
+/**
+ * Fetch schemes for a given store id.
+ * Expects payload { store_id: number }
+ */
+export const getStoreBasedSchemes = (storeId) => {
+  return POST(`/storebasedscheme_data`, {
+    store_id: storeId,
   });
 };

@@ -1,7 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchSchemesByMobileNumber } from "../store/scheme/schemeSlice";
+import { fetchStoreBasedSchemes } from "../store/scheme/schemeSlice";
+import Constants from "../utils/constants";
 
 const SCHEME_DATA = {
   "DHAN SAMRIDDHI": {
@@ -34,6 +35,13 @@ const SCHEME_DATA = {
   },
 };
 
+const DEFAULT_COLORS = [
+  "from-emerald-600 to-emerald-700",
+  "from-orange-600 to-orange-700",
+  "from-sky-600 to-sky-700",
+  "from-amber-600 to-amber-700",
+];
+
 export default function Schemes() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,20 +50,25 @@ export default function Schemes() {
 
   const schemesState = useSelector((state) => state.scheme?.schemes || {});
 
-  // On mount, try to read mobile number from saved profile and fetch schemes
+  // On mount, fetch schemes for configured store id
   useEffect(() => {
-    try {
-      const profileRaw = localStorage.getItem("profile");
-      const profile = profileRaw ? JSON.parse(profileRaw) : {};
-      const mobile = profile.mobileNumber || profile.mobile || "";
-
-      if (mobile && mobile.toString().length >= 10) {
-        dispatch(fetchSchemesByMobileNumber(mobile.toString()));
-      }
-    } catch (e) {
-      // ignore JSON parse errors
-    }
+    const storeId = Constants.mykalyanStoreId || 3;
+    dispatch(fetchStoreBasedSchemes(storeId));
   }, [dispatch]);
+
+  // Normalize API response to the UI shape used by the static SCHEME_DATA
+  const transformedApiList = (schemesState.data && schemesState.data.length)
+    ? schemesState.data.map((s, idx) => ({
+        // incoming shape: { id, scheme_name, no_of_installment, min_installment_amount, max_instamment_amount, weight_allocation }
+        name: s.scheme_name || `Scheme ${s.id}`,
+        tenure: s.no_of_installment ? String(s.no_of_installment) : "-",
+        // membershipFee / optedAmount / firstInstallment are approximated from returned fields
+        membershipFee: s.min_installment_amount ?? 0,
+        optedAmount: s.max_instamment_amount ?? s.min_installment_amount ?? 0,
+        firstInstallment: s.min_installment_amount ?? 0,
+        color: DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
+      }))
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col animate-fade-in">
@@ -74,9 +87,9 @@ export default function Schemes() {
           {/* Scheme cards */}
           <div className="md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-8">
             {(
-              // prefer data from API when available, otherwise fallback to static SCHEME_DATA
-              (schemesState.data && schemesState.data.length
-                ? schemesState.data
+              // prefer transformed API data when available, otherwise fallback to static SCHEME_DATA
+              (transformedApiList && transformedApiList.length
+                ? transformedApiList
                 : Object.entries(SCHEME_DATA).map(([name, info]) => ({
                     name,
                     ...info,
@@ -140,8 +153,8 @@ export default function Schemes() {
                     </button>
                   </div>
                 </div>
-              )
-            )}
+              );
+            })}
           </div>
         </div>
       </div>
