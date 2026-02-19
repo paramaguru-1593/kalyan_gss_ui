@@ -14,6 +14,7 @@ import SchemeDetails from "./pages/SchemeDetails";
 import Review from "./pages/Review";
 import Bond from "./pages/Bond";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/Terms";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/schemes" element={<Schemes />} />
+            <Route path="/terms/:schemeId" element={<Terms />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/profile-edit" element={<ProfileEdit />} />
           <Route path="/scheme-details" element={<SchemeDetails />} />
