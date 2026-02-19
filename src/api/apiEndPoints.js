@@ -5,6 +5,8 @@ const ApiEndpoits = {
     storeGoldRate: "/getstoregoldrate",
     // schemes endpoints
     storeBasedSchemeData: "/storebasedscheme_data",
+    // terms and conditions for a scheme (backend route is GET /externals/gettermsandcondition)
+    getTermsAndCondition: "/externals/gettermsandcondition",
     enrollNew: "/enroll_new",
     getPaymentInformation: "/Enrollment_tbs/getPaymentInformation",
     confirmPayment: "/Collection_tbs/confirmPayment",
