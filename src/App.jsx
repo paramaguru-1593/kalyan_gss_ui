@@ -7,8 +7,10 @@ import Home from "./pages/Home";
 import Schemes from "./pages/Schemes";
 import Transactions from "./pages/Transactions";
 import Enroll from "./pages/Enroll";
+import EnrollCustomerInfo from "./pages/EnrollCustomerInfo";
 import PersonalInfo from "./pages/PersonalInfo";
 import ProfileEdit from "./pages/ProfileEdit";
+import SchemeDetails from "./pages/SchemeDetails";
 import Review from "./pages/Review";
 import Bond from "./pages/Bond";
 import NotFound from "./pages/NotFound";
@@ -27,10 +29,12 @@ export default function App() {
           <Route path="/schemes" element={<Schemes />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/profile-edit" element={<ProfileEdit />} />
+          <Route path="/scheme-details" element={<SchemeDetails />} />
         </Route>
 
         {/* Wizard / flow pages - no main nav header */}
         <Route path="/enroll" element={<Enroll />} />
+        <Route path="/enroll-customer-info" element={<EnrollCustomerInfo />} />
         <Route path="/personal-info" element={<PersonalInfo />} />
         <Route path="/review" element={<Review />} />
         <Route path="/bond" element={<Bond />} />

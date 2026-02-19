@@ -13,6 +13,7 @@ const Constants = {
         sectionToken:"sectionToken",
         logoutTypes:"logoutTypes",
         isAutoLogout:"isAutoLogout",
+        mobileNumber: "mobileNumber",
     },
     mykalyanStoreId:115,
     pageSize :5,

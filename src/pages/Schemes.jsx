@@ -24,17 +24,30 @@ export default function Schemes() {
   // On mount, fetch schemes for configured store id
   useEffect(() => {
     const storeId = Constants.mykalyanStoreId || 3;
-    dispatch(fetchSchemeDetails(storeId));
+    const request = { 
+      store_id: storeId
+    };
+
+    dispatch(
+      fetchSchemeDetails({
+        request,
+        onSuccess: (data) => {
+          console.log("Schemes fetched successfully:", data);
+        },
+      })
+    );
   }, [dispatch]);
 
   // Normalize API response
   const transformedApiList =
     schemesState.data && schemesState.data.length
       ? schemesState.data.map((s, idx) => ({
+          schemeId: s.id,
           name: s.scheme_name || `Scheme ${s.id}`,
           tenure: s.no_of_installment
-            ? String(s.no_of_installment)
-            : "-",
+            ? Number(s.no_of_installment)
+            : 12,
+          tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
           membershipFee: s.min_installment_amount ?? null,
           optedAmount:
             s.max_instamment_amount ??
@@ -89,7 +102,7 @@ export default function Schemes() {
                   <div className="p-4 space-y-3 flex-1 flex flex-col">
                     <Row
                       label="Tenure"
-                      value={`${item.tenure} months`}
+                      value={`${item.tenureStr} months`}
                     />
                     <Row
                       label="Monthly Instalment"
@@ -109,7 +122,10 @@ export default function Schemes() {
                       onClick={() =>
                         navigate("/enroll", {
                           state: {
-                            scheme: item.name,
+                            schemeId: item.schemeId,
+                            schemeName: item.name,
+                            tenure: item.tenure,
+                            defaultEmi: item.optedAmount ?? item.firstInstallment ?? 5000,
                             userId,
                           },
                         })
