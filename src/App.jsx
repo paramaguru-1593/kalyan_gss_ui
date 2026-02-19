@@ -13,6 +13,7 @@ import ProfileEdit from "./pages/ProfileEdit";
 import SchemeDetails from "./pages/SchemeDetails";
 import Review from "./pages/Review";
 import Bond from "./pages/Bond";
+import UserDetails from "./pages/UserDetails";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 
@@ -23,6 +24,7 @@ export default function App() {
         {/* Auth - no header */}
         <Route path="/" element={<Login />} />
         <Route path="/otp" element={<Otp />} />
+        <Route path="/user-details" element={<UserDetails />} />
 
         {/* Main app - shared header on all these pages */}
         <Route element={<Layout />}>

@@ -12,6 +12,11 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
 const MODES_OF_PAY = ["Online", "Offline", "Cash", "UPI", "Card", "Net Banking"];
 const NOMINEE_RELATIONS = ["Spouse", "Parent", "Child", "Sibling", "Other"];
 
+// Slider configuration (min, max and step). Adjust as needed.
+const MIN_AMOUNT = 500;
+const MAX_AMOUNT = 100000;
+const STEP = 100;
+
 export default function Enroll() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,6 +72,13 @@ export default function Enroll() {
   const handleNomineePincodeChange = (e) => {
     const v = e.target.value.replace(/\D/g, "").slice(0, 6);
     setNomineePincodeId(v);
+  };
+
+  const handleSliderChange = (e) => {
+    const v = Number(e.target.value) || 0;
+    // clamp to allowed bounds
+    const clamped = Math.min(MAX_AMOUNT, Math.max(MIN_AMOUNT, v));
+    setEmiAmount(clamped);
   };
 
   const isFormValid = () => {
@@ -167,6 +179,38 @@ export default function Enroll() {
               {error}
             </div>
           )}
+
+          <section className="mb-6">
+            <h2 className="text-sm font-medium text-gray-700 mb-2">
+              Opted Amount for Month
+            </h2>
+            <div className="text-center py-4">
+              <span className="text-3xl md:text-4xl font-bold text-gray-900">
+                ₹{emiAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="px-1">
+              <input
+                type="range"
+                min={MIN_AMOUNT}
+                max={MAX_AMOUNT}
+                step={STEP}
+                value={emiAmount}
+                onChange={handleSliderChange}
+                className="enroll-slider w-full h-2 rounded-full appearance-none cursor-pointer accent-[#00A86B]"
+                style={{
+                  background: `linear-gradient(to right, #00A86B 0%, #00A86B ${((emiAmount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100}%, #e5e7eb ${((emiAmount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100}%, #e5e7eb 100%)`,
+                }}
+                aria-valuemin={MIN_AMOUNT}
+                aria-valuemax={MAX_AMOUNT}
+                aria-valuenow={emiAmount}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-gray-500 mt-1 px-0.5">
+              <span>₹{MIN_AMOUNT.toLocaleString("en-IN")}</span>
+              <span>₹{MAX_AMOUNT.toLocaleString("en-IN")}</span>
+            </div>
+          </section>
 
           {/* Scheme & customer info */}
           <section className="bg-gray-50 rounded-xl p-4 md:p-5 mb-6">

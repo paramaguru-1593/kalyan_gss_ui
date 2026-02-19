@@ -1,5 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaArrowLeft, FaCoins, FaCalendarAlt, FaUser, FaWallet } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaArrowLeft, FaCoins, FaCalendarAlt, FaUser, FaWallet, FaCheckCircle } from "react-icons/fa";
+import { GET } from "../api/apiHelper";
+import ApiEndpoints from "../api/apiEndPoints";
 
 function Row({ label, value }) {
   return (
@@ -32,6 +35,100 @@ export default function SchemeDetails() {
   }
 
   const collections = enrollment.collections || [];
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [paymentInfoLoading, setPaymentInfoLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [error, setError] = useState("");
+
+  const accountNo = enrollment.EnrollmentID || "";
+
+  useEffect(() => {
+    if (!accountNo) {
+      setPaymentInfoLoading(false);
+      setPaymentInfo(null);
+      return;
+    }
+    setPaymentInfoLoading(true);
+    GET(ApiEndpoints.getPaymentInformation, {
+      params: { EnrollmentID: accountNo },
+    })
+      .then((response) => {
+        const data = response?.data?.data;
+        if (data != null) {
+          setPaymentInfo({
+            paymentAccepted: data.paymentAccepted === true,
+            paymentAcceptedMonth: data.paymentAcceptedMonth ?? null,
+            acceptanceReason: data.acceptanceReason,
+          });
+        } else {
+          setPaymentInfo(null);
+        }
+      })
+      .catch(() => setPaymentInfo(null))
+      .finally(() => setPaymentInfoLoading(false));
+  }, [accountNo]);
+
+  const handlePayAndRegister = async () => {
+    const emiAmount = enrollment.EMIAmount || 0;
+    let email = null;
+    try {
+      const profile = localStorage.getItem("profile");
+      if (profile) {
+        const p = JSON.parse(profile);
+        email = p.emailAddress || null;
+      }
+    } catch {
+      email = null;
+    }
+
+    if (!email) {
+      setError("Email is required for payment. Update it in Profile if needed.");
+      return;
+    }
+    if (!accountNo) {
+      setError("Account number is missing. Cannot proceed to pay.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const transId = `TXN${Date.now()}${Math.random().toString(36).slice(2, 9)}`;
+    const amountStr = String(emiAmount || "0");
+    const channel = "Web";
+
+    const params = {
+      Date: dateStr,
+      enrNo: String(accountNo),
+      amount: amountStr,
+      transId,
+      email: email.trim(),
+      channel,
+    };
+
+    const response = await GET(ApiEndpoints.confirmPayment, { params });
+    setLoading(false);
+
+    const isSuccess =
+      response?.status === 200 &&
+      response?.data?.data != null &&
+      response?.data?.error?.status !== 400;
+    if (isSuccess) {
+      const data = response.data.data;
+      const receiptId = (Array.isArray(data) ? data[0] : data)?.ReceiptID;
+      setPaymentSuccess({
+        receiptId: receiptId ?? transId,
+        message: response?.data?.error?.message || "Payment confirmed successfully.",
+      });
+    } else {
+      const errMsg =
+        response?.data?.error?.message ||
+        response?.data?.error?.description ||
+        "Payment confirmation failed. Please try again.";
+      setError(errMsg);
+    }
+  };
   const formatDate = (d) => {
     if (!d) return "—";
     try {
@@ -144,7 +241,103 @@ export default function SchemeDetails() {
             </section>
           </div>
         </div>
-      </main>
-    </div>
+            </main>
+
+            {/* Payment success modal */}
+            {paymentSuccess && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50">
+                <div className="bg-white rounded-2xl p-6 text-center max-w-sm w-full">
+                  <FaCheckCircle className="text-green-600 text-4xl mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Payment Successful</h3>
+                  <p className="text-gray-600 mb-4">{paymentSuccess.message}</p>
+                  {paymentSuccess.receiptId && (
+                    <div className="text-left bg-gray-50 rounded-xl p-4 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Receipt ID</span>
+                        <span className="font-semibold">{paymentSuccess.receiptId}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() =>
+                        navigate("/bond", {
+                          state: {
+                            source: "enroll",
+                            schemeType: enrollment.PlanType,
+                            customerId: enrollment.CustomerID || "",
+                            enrollmentId: accountNo,
+                            transactionRef: paymentSuccess.receiptId,
+                            amount: enrollment.EMIAmount || 0,
+                            fullName: enrollment.CustomerName || "",
+                            mobileNumber: enrollment.MobileNo || "",
+                            emailAddress: enrollment.NomineeEmailAddress || null,
+                          },
+                        })
+                      }
+                      className="w-full bg-amber-600 text-white py-3 rounded-xl font-semibold hover:bg-amber-700 transition"
+                    >
+                      View receipt (Bond)
+                    </button>
+                    <button
+                      onClick={() => navigate("/home")}
+                      className="w-full border border-gray-300 py-3 rounded-xl font-semibold hover:bg-gray-50 transition"
+                    >
+                      Go to Home
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom action bar: show pay button or receipt actions */}
+            {!paymentInfo?.paymentAccepted && (
+            <div className="sticky bottom-0 left-0 right-0 bg-white border-t p-4">
+                {/* <div className="flex flex-col gap-2 max-w-lg mx-auto">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate("/bond", {
+                        state: {
+                          source: "enroll",
+                          schemeType: enrollment.PlanType,
+                          customerId: enrollment.CustomerID || "",
+                          enrollmentId: accountNo,
+                          transactionRef: enrollment.ReceiptNo || "",
+                          amount: enrollment.EMIAmount || 0,
+                          fullName: enrollment.CustomerName || "",
+                          mobileNumber: enrollment.MobileNo || "",
+                          emailAddress: enrollment.NomineeEmailAddress || null,
+                        },
+                      })
+                    }
+                    className="w-full py-4 rounded-xl font-semibold bg-amber-600 text-white hover:bg-amber-700 transition"
+                  >
+                    View receipt (Bond)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/home")}
+                    className="w-full py-3 rounded-xl font-semibold border border-gray-300 hover:bg-gray-50 transition"
+                  >
+                    Go to Home
+                  </button>
+                </div>
+              ) : ( */}
+                <button
+                  type="button"
+                  onClick={handlePayAndRegister}
+                  disabled={loading || paymentInfoLoading}
+                  className={`w-full max-w-lg mx-auto block py-4 rounded-xl font-semibold transition ${
+                    loading || paymentInfoLoading
+                      ? "bg-gray-400 cursor-wait text-white"
+                      : "bg-green-600 text-white hover:bg-green-700"
+                  }`}
+                >
+                  {loading ? "Processing..." : paymentInfoLoading ? "Checking..." : "Pay & Register"}
+                </button>
+            </div>
+            )}
+          </div>
   );
 }

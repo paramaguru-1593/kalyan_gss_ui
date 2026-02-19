@@ -24,11 +24,16 @@ export default function Login() {
     setLoading(true);
     const response = await POST(ApiEndpoints.login, { mobile_number: mobile });
     setLoading(false);
+    
     if (response?.data?.status === "success" && response?.data?.token) {
       localStorage.setItem(Constants.localStorageKey.accessToken, response.data.token);
       localStorage.setItem(Constants.localStorageKey.mobileNumber, response.data.mobile_number || mobile);
       localStorage.setItem(Constants.localStorageKey.tokenType, "Bearer");
-      navigate("/otp", { state: { mobile } });
+      console.log(response.data);
+      
+      const kycUpdated = response.data.kyc_updated === true;
+      localStorage.setItem(Constants.localStorageKey.kycUpdated, JSON.stringify(kycUpdated));
+      navigate("/otp", { state: { mobile, kycUpdated } });
     } else {
       setError(response?.data?.message || "Login failed. Please try again.");
     }

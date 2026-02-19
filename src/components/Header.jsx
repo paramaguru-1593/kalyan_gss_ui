@@ -8,6 +8,7 @@ import Constants from "../utils/constants";
 import { POST } from "../api/apiHelper";
 import ApiEndpoints from "../api/apiEndPoints";
 import Images from "../images/images";
+import { logoutApp } from "../store/auth/authApi";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -54,19 +55,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     setProfileDropdownOpen(false);
-    const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
-    if (mobileNumber) {
-      try {
-        await POST(ApiEndpoints.logout, { mobile_number: mobileNumber });
-      } catch (_) {}
-    }
-    localStorage.removeItem(Constants.localStorageKey.accessToken);
-    localStorage.removeItem(Constants.localStorageKey.tokenType);
-    localStorage.removeItem(Constants.localStorageKey.mobileNumber);
-    localStorage.removeItem(Constants.localStorageKey.userId);
-    localStorage.removeItem(Constants.localStorageKey.loginEmail);
-    dispatch(logout());
-    navigate("/", { replace: true });
+    dispatch(logoutApp({}, navigate))
   };
 
   const navLinks = [
