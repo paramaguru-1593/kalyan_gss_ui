@@ -1,20 +1,37 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Images from "../images/images";
+import { POST } from "../api/apiHelper";
+import ApiEndpoints from "../api/apiEndPoints";
+import Constants from "../utils/constants";
 
 export default function Login() {
   const [mobile, setMobile] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleMobileChange = (e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     setMobile(value);
+    setError("");
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e?.preventDefault();
     if (mobile.length !== 10) return;
-    navigate("/otp", { state: { mobile } });
+    setError("");
+    setLoading(true);
+    const response = await POST(ApiEndpoints.login, { mobile_number: mobile });
+    setLoading(false);
+    if (response?.data?.status === "success" && response?.data?.token) {
+      localStorage.setItem(Constants.localStorageKey.accessToken, response.data.token);
+      localStorage.setItem(Constants.localStorageKey.mobileNumber, response.data.mobile_number || mobile);
+      localStorage.setItem(Constants.localStorageKey.tokenType, "Bearer");
+      navigate("/otp", { state: { mobile } });
+    } else {
+      setError(response?.data?.message || "Login failed. Please try again.");
+    }
   };
 
   const isMobileValid = mobile.length === 10;
@@ -43,6 +60,11 @@ export default function Login() {
           onSubmit={handleLogin}
           className="bg-amber-50 md:bg-white rounded-xl p-6 md:p-10 shadow-md md:shadow-lg border border-amber-100"
         >
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Mobile Number
@@ -61,14 +83,14 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={!isMobileValid}
+            disabled={!isMobileValid || loading}
             className={`w-full h-12 rounded-lg text-white font-medium transition-all duration-300 transform active:scale-95 ${
-              isMobileValid
+              isMobileValid && !loading
                 ? "bg-red-700 hover:bg-red-800 shadow-lg hover:shadow-xl"
                 : "bg-red-400 cursor-not-allowed opacity-70"
             }`}
           >
-            Login
+            {loading ? "Signing in..." : "Login"}
           </button>
 
           <p className="text-center text-xs md:text-sm text-gray-500 mt-6 leading-relaxed">
