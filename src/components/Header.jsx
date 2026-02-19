@@ -1,6 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { fetchTermsAndCondition } from "../store/scheme/schemesApi";
 import { FaBars, FaTimes, FaUserCircle } from "react-icons/fa";
 
 export default function Header() {
@@ -8,6 +10,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Detect scroll for styling
   useEffect(() => {
@@ -25,6 +28,32 @@ export default function Header() {
   ];
 
   const isActive = (path) => location.pathname === path;
+
+  // Optimized terms fetch logic
+  const handleTermsClick = async () => {
+    try {
+      setMenuOpen(false);
+      const stored = localStorage.getItem("transactions");
+      let schemeId = "1035"; // Default fallback
+
+      if (stored) {
+        const list = JSON.parse(stored);
+        const last = Array.isArray(list) && list.length ? list[0] : null;
+        schemeId = last?.scheme_id || last?.schemeId || schemeId;
+      }
+
+      const payload = await dispatch(
+        fetchTermsAndCondition({ request: { scheme_id: String(schemeId) } })
+      ).unwrap();
+
+      navigate(`/terms/${encodeURIComponent(String(schemeId))}`, {
+        state: { preloaded: payload },
+      });
+    } catch (err) {
+      console.error("Terms load error:", err);
+      // Optional: use a toast instead of alert for better premium feel
+    }
+  };
 
   return (
     <>
@@ -72,6 +101,20 @@ export default function Header() {
                 )}
               </button>
             ))}
+
+            {/* Terms button (desktop) - Styled same as other nav buttons */}
+            <button
+              onClick={handleTermsClick}
+              className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 relative overflow-hidden ${location.pathname.startsWith("/terms")
+                ? "text-amber-800 bg-gradient-to-r from-amber-100 to-amber-50 shadow-sm ring-1 ring-amber-200/60 scale-[1.02]"
+                : "text-gray-600 hover:text-amber-700 hover:bg-amber-50/80 hover:scale-[1.02]"
+                }`}
+            >
+              Terms & Conditions
+              {location.pathname.startsWith("/terms") && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-amber-500 rounded-full animate-nav-underline" />
+              )}
+            </button>
           </nav>
 
           {/* User & Mobile Toggle */}
@@ -143,7 +186,13 @@ export default function Header() {
                 {link.name}
               </button>
             ))}
-            
+            <button
+              onClick={handleTermsClick}
+              className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-amber-50 hover:text-amber-800 transition animate-slide-up opacity-0 [animation-fill-mode:forwards] delay-300"
+            >
+              <span className="text-gray-600">Terms & Conditions</span>
+            </button>
+
             <div className="border-t border-gray-100 my-4 pt-4" />
             
             <button
