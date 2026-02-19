@@ -9,6 +9,8 @@ const ApiEndpoits = {
     confirmPayment: "/Collection_tbs/confirmPayment",
     // externals
     getSchemesByMobileNumber: "/externals/getSchemesByMobileNumber",
+    customerKycInfo: "/customerkycinfo",
+    customerBankDetailUpdation: "/customerbankdetail_updation",
 }
 
 export default ApiEndpoits;

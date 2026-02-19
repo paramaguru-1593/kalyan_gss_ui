@@ -62,3 +62,11 @@ export const getStoreGoldRate = (payload) =>
 // Get schemes by mobile number (current enrollments)
 export const getSchemesByMobileNumber = (mobileNumber) =>
   GET(`${ApiEndpoits.getSchemesByMobileNumber}?MobileNumber=${encodeURIComponent(mobileNumber)}`);
+
+// Get customer KYC info (includes bank_details, kyc_details) for display
+export const getCustomerKycInfo = (mobileNo) =>
+  POST(ApiEndpoits.customerKycInfo, { mobile_no: mobileNo });
+
+// Update customer bank details
+export const updateCustomerBankDetails = (payload) =>
+  POST(ApiEndpoits.customerBankDetailUpdation, payload);
