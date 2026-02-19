@@ -1,5 +1,6 @@
 import Constants from "../utils/constants";
 import axios from "axios";
+import ApiEndpoits from "./apiEndPoints";
 
 // Create axios instance for Laravel API
 const instance = axios.create({
@@ -7,33 +8,28 @@ const instance = axios.create({
 });
   
 
-// Add request interceptor
+// Add request interceptor: Bearer token for all requests except login
 instance.interceptors.request.use(
     function (config) {
-      const token = localStorage.getItem('accessToken');
-      const tokenType = localStorage.getItem(Constants.localStorageKey.tokenType);
-      // const tokenType = 'Bearer';
-      
-
-      if(config.url == '/api/storeCandidates'){
-        if (token) {
-          config.headers = {
-              
-              'Authorization': `${tokenType} ${token}`,
-              'Accept': 'application/json',
-            };
-            
-        }
-      }else if (token) {
+      const isLoginRequest = config.url && (config.url.includes("login") || config.url.endsWith("/login"));
+      if (isLoginRequest) {
         config.headers = {
-            
-            'Authorization': `${tokenType} ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          };
-          
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        };
+        return config;
       }
-  
+
+      const token = localStorage.getItem(Constants.localStorageKey.accessToken);
+      const tokenType = localStorage.getItem(Constants.localStorageKey.tokenType) || "Bearer";
+      if (token) {
+        config.headers = {
+          ...config.headers,
+          Authorization: `${tokenType} ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        };
+      }
       return config;
     },
     function (error) {
@@ -58,3 +54,11 @@ export const GET = (url, config) =>
 
 export const POST = (url, data, config) =>
   instance.post(url, data, config).catch((error) => error?.response);
+
+// Wrapper for today's store gold rate
+export const getStoreGoldRate = (payload) =>
+  POST(ApiEndpoits.storeGoldRate, payload);
+
+// Get schemes by mobile number (current enrollments)
+export const getSchemesByMobileNumber = (mobileNumber) =>
+  GET(`${ApiEndpoits.getSchemesByMobileNumber}?MobileNumber=${encodeURIComponent(mobileNumber)}`);
