@@ -6,11 +6,14 @@ const ApiEndpoits = {
     // schemes endpoints
     storeBasedSchemeData: "/storebasedscheme_data",
     enrollNew: "/enroll_new",
+    getPaymentInformation: "/Enrollment_tbs/getPaymentInformation",
     confirmPayment: "/Collection_tbs/confirmPayment",
     // externals
     getSchemesByMobileNumber: "/externals/getSchemesByMobileNumber",
     customerKycInfo: "/customerkycinfo",
+    customerKycUpdation: "/customerkycupdation",
     customerBankDetailUpdation: "/customerbankdetail_updation",
+    updatePersonalDetails: "/update-personal-details",
 }
 
 export default ApiEndpoits;

@@ -47,7 +47,7 @@ export default function Transactions() {
 
   const handleViewReceipt = (tx) => {
     navigate("/bond", {
-      state: tx,
+      state: { ...tx, source: "transactions" },
     });
   };
 

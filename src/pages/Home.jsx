@@ -168,10 +168,19 @@ export default function Home() {
 
           {/* Right Column (Schemes) */}
           <div className="md:col-span-8 lg:col-span-9">
-            {/* Current schemes */}
-            <h3 className="font-semibold text-lg mb-3">
-              Current Schemes
-            </h3>
+            {/* User flow: Home → View schemes → Select scheme → Enroll */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-semibold text-lg mb-0">
+                Current Schemes
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate("/schemes")}
+                className="px-4 py-2.5 bg-amber-600 text-white text-sm font-semibold rounded-xl hover:bg-amber-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm"
+              >
+                View schemes
+              </button>
+            </div>
 
             {schemesLoading ? (
               <div className="text-gray-500 py-8 text-center">Loading current schemes...</div>
@@ -243,14 +252,15 @@ export default function Home() {
               {schemesState?.data && schemesState.data.length > 0 ? (
                 schemesState.data
                   .map((s, i) => ({
+                    schemeId: s.id,
                     name: s.scheme_name || `Scheme ${s.id}`,
-                    tenure: s.no_of_installment
-                      ? String(s.no_of_installment)
-                      : "-",
+                    tenure: s.no_of_installment ? Number(s.no_of_installment) : 12,
+                    tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
                     monthlyAmount:
                       s.min_installment_amount ??
                       s.max_instamment_amount ??
                       0,
+                    membershipFee: s.min_installment_amount ?? null,
                     gradient: [
                       "from-emerald-600 to-emerald-700",
                       "from-orange-600 to-orange-700",
@@ -274,7 +284,7 @@ export default function Home() {
                         <p>
                           Tenure:{" "}
                           <span className="font-medium text-gray-900">
-                            {item.tenure} months
+                            {item.tenureStr} months
                           </span>
                         </p>
                         <p>
@@ -287,7 +297,17 @@ export default function Home() {
                         <div className="flex-1" />
                         <button
                           className="w-full bg-amber-600 text-white py-2 rounded-lg mt-2 hover:bg-amber-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-                          onClick={() => navigate("/enroll")}
+                          onClick={() =>
+                            navigate("/enroll", {
+                              state: {
+                                schemeId: item.schemeId,
+                                schemeName: item.name,
+                                tenure: item.tenure,
+                                membershipFee: item.membershipFee,
+                                defaultEmi: item.monthlyAmount,
+                              },
+                            })
+                          }
                         >
                           Enroll Now
                         </button>

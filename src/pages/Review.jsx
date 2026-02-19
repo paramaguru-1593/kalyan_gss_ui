@@ -180,7 +180,7 @@ export default function Review() {
         </div>
       )}
 
-      {/* Success */}
+      {/* Success: Review flow → Bond (receipt) or Home */}
       {showSuccess && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center">
@@ -188,13 +188,36 @@ export default function Review() {
             <h3 className="font-semibold text-lg">
               Payment Successful
             </h3>
+            <p className="text-sm text-gray-500 mt-1">Confirm details → Make payment ✓</p>
 
-            <button
-              onClick={() => navigate("/home")}
-              className="w-full mt-4 border py-3 rounded-lg"
-            >
-              Home
-            </button>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={() =>
+                  navigate("/bond", {
+                    state: {
+                      schemeType,
+                      customerId,
+                      enrollmentId,
+                      monthOfEmi,
+                      amount: amountPaid,
+                      transactionRef,
+                      fullName: personalData.fullName,
+                      mobileNumber: personalData.mobileNumber,
+                      emailAddress: personalData.emailAddress,
+                    },
+                  })
+                }
+                className="w-full bg-amber-600 text-white py-3 rounded-lg font-semibold hover:bg-amber-700"
+              >
+                View receipt (Bond)
+              </button>
+              <button
+                onClick={() => navigate("/home")}
+                className="w-full border border-gray-300 py-3 rounded-lg font-medium hover:bg-gray-50"
+              >
+                Home
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -6,6 +6,10 @@ const initialState = {
         data: [],
         error: null,
     },
+    personalDetails: {
+        isLoading: false,
+        error: null,
+    },
 }
 
 
@@ -25,13 +29,28 @@ export const schemeSlice = createSlice({
             state.schemes.isLoading = false;
             state.schemes.error = action.payload;
         },
+        updatePersonalDetailsStart: (state) => {
+            state.personalDetails.isLoading = true;
+            state.personalDetails.error = null;
+        },
+        updatePersonalDetailsSuccess: (state) => {
+            state.personalDetails.isLoading = false;
+            state.personalDetails.error = null;
+        },
+        updatePersonalDetailsFailure: (state, action) => {
+            state.personalDetails.isLoading = false;
+            state.personalDetails.error = action.payload;
+        },
     },
 });
 
-export const { 
+export const {
     fetchSchemeDetailsStart,
     fetchSchemeDetailsSuccess,
     fetchSchemeDetailsFailure,
+    updatePersonalDetailsStart,
+    updatePersonalDetailsSuccess,
+    updatePersonalDetailsFailure,
 } = schemeSlice.actions;
 
 export default schemeSlice.reducer;

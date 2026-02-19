@@ -14,6 +14,7 @@ const Constants = {
         logoutTypes:"logoutTypes",
         isAutoLogout:"isAutoLogout",
         mobileNumber: "mobileNumber",
+        kycUpdated: "kycUpdated",
     },
     mykalyanStoreId:115,
     pageSize :5,

@@ -4,6 +4,8 @@ import { FaArrowLeft, FaCheckCircle } from "react-icons/fa";
 import { GET } from "../api/apiHelper";
 import ApiEndpoints from "../api/apiEndPoints";
 
+/** @typedef {{ paymentAccepted?: boolean; paymentAcceptedMonth?: string | null; acceptanceReason?: string }} PaymentInfo */
+
 function Row({ label, value }) {
   return (
     <div className="flex justify-between py-2.5 border-b border-gray-100 last:border-0 text-sm">
@@ -18,11 +20,13 @@ export default function EnrollCustomerInfo() {
   const location = useLocation();
   const state = location.state || {};
 
-  const [email, setEmail] = useState("testing@gmail.com");
-  const [customerName, setCustomerName] = useState("test");
+  const [email, setEmail] = useState(state.emailAddress || "testing@gmail.com");
+  const [customerName, setCustomerName] = useState(state.fullName || "test");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [paymentInfo, setPaymentInfo] = useState(/** @type {PaymentInfo | null} */ (null));
+  const [paymentInfoLoading, setPaymentInfoLoading] = useState(true);
 
   const accountNo = state.account_no ?? "";
   const receiptNo = state.receipt_no ?? "";
@@ -34,23 +38,48 @@ export default function EnrollCustomerInfo() {
 
   useEffect(() => {
     try {
-      const profile = localStorage.getItem("profile");
-      if (profile) {
-        const data = JSON.parse(profile);
-        if (data.emailAddress) 
-        {
-          setEmail(data.emailAddress);
-        } else {
-          setEmail("testing@gmail.com");
-        }
-        if (data.fullName) {
-          setCustomerName(data.fullName);
-        } else {
-          setCustomerName("test");
-        }
-      }
+      if (state.fullName) setCustomerName(state.fullName);
+      if (state.emailAddress) setEmail(state.emailAddress);
     } catch (_) {}
-  }, []);
+  }, [state.fullName, state.emailAddress]);
+
+  useEffect(() => {
+    const profile = localStorage.getItem("profile");
+    if (profile && !state.fullName) {
+      try {
+        const data = JSON.parse(profile);
+        if (data.emailAddress) setEmail(data.emailAddress);
+        if (data.fullName) setCustomerName(data.fullName);
+      } catch (_) {}
+    }
+  }, [state.fullName]);
+
+  // Check if first month already paid via getPaymentInformation
+  useEffect(() => {
+    if (!accountNo) {
+      setPaymentInfoLoading(false);
+      setPaymentInfo(null);
+      return;
+    }
+    setPaymentInfoLoading(true);
+    GET(ApiEndpoints.getPaymentInformation, {
+      params: { EnrollmentID: accountNo },
+    })
+      .then((response) => {
+        const data = response?.data?.data;
+        if (data != null) {
+          setPaymentInfo({
+            paymentAccepted: data.paymentAccepted === true,
+            paymentAcceptedMonth: data.paymentAcceptedMonth ?? null,
+            acceptanceReason: data.acceptanceReason,
+          });
+        } else {
+          setPaymentInfo(null);
+        }
+      })
+      .catch(() => setPaymentInfo(null))
+      .finally(() => setPaymentInfoLoading(false));
+  }, [accountNo]);
 
   const handlePayAndRegister = async () => {
     if (!email.trim()) {
@@ -102,6 +131,17 @@ export default function EnrollCustomerInfo() {
   };
 
   if (paymentSuccess) {
+    const bondState = {
+      source: "enroll",
+      schemeType: schemeName,
+      customerId,
+      enrollmentId: accountNo,
+      transactionRef: paymentSuccess.receiptId || receiptNo,
+      amount: emiAmount,
+      fullName: customerName,
+      mobileNumber: mobileNo,
+      emailAddress: email,
+    };
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <div className="flex-1 flex items-center justify-center px-4 py-8">
@@ -117,12 +157,20 @@ export default function EnrollCustomerInfo() {
                 </div>
               </div>
             )}
-            <button
-              onClick={() => navigate("/home")}
-              className="w-full bg-amber-600 text-white py-3 rounded-xl font-semibold hover:bg-amber-700 transition"
-            >
-              Go to Home
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => navigate("/bond", { state: bondState })}
+                className="w-full bg-amber-600 text-white py-3 rounded-xl font-semibold hover:bg-amber-700 transition"
+              >
+                View receipt (Bond)
+              </button>
+              <button
+                onClick={() => navigate("/home")}
+                className="w-full border border-gray-300 py-3 rounded-xl font-semibold hover:bg-gray-50 transition"
+              >
+                Go to Home
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -179,20 +227,65 @@ export default function EnrollCustomerInfo() {
               Add email in Edit Profile for payment. You can still proceed; email may be required by the payment API.
             </p>
           )}
+
+          {paymentInfoLoading && (
+            <p className="text-sm text-gray-500 py-2">Checking payment status...</p>
+          )}
+          {!paymentInfoLoading && paymentInfo?.paymentAccepted && (
+            <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+              First month already paid.
+              {paymentInfo.paymentAcceptedMonth && (
+                <span className="block mt-1">Accepted for: {paymentInfo.paymentAcceptedMonth}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
-        <button
-          type="button"
-          onClick={handlePayAndRegister}
-          disabled={loading}
-          className={`w-full max-w-lg mx-auto block py-4 rounded-xl font-semibold transition ${
-            loading ? "bg-gray-400 cursor-wait" : "bg-green-600 text-white hover:bg-green-700"
-          }`}
-        >
-          {loading ? "Processing..." : "Pay & Register"}
-        </button>
+        {!paymentInfoLoading && paymentInfo?.paymentAccepted ? (
+          <div className="flex items-center justify-center gap-2 max-w-lg mx-auto">
+            <button
+              type="button"
+              onClick={() => navigate("/bond", {
+                state: {
+                  source: "enroll",
+                  schemeType: schemeName,
+                  customerId,
+                  enrollmentId: accountNo,
+                  transactionRef: receiptNo,
+                  amount: emiAmount,
+                  fullName: customerName,
+                  mobileNumber: mobileNo,
+                  emailAddress: email,
+                },
+              })}
+              className="w-full py-4 rounded-xl font-semibold bg-amber-600 text-white hover:bg-amber-700 transition"
+            >
+              View receipt (Bond)
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/home")}
+              className="w-full py-3 rounded-xl font-semibold border border-gray-300 hover:bg-gray-50 transition"
+            >
+              Go to Home
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handlePayAndRegister}
+            disabled={loading || paymentInfoLoading}
+            className={`w-full max-w-lg mx-auto block py-4 rounded-xl font-semibold transition ${
+              loading || paymentInfoLoading
+                ? "bg-gray-400 cursor-wait text-white"
+                : "bg-green-600 text-white hover:bg-green-700"
+            }`}
+          >
+            {loading ? "Processing..." : paymentInfoLoading ? "Checking..." : "Pay & Register"}
+          </button>
+        )}
       </div>
     </div>
   );

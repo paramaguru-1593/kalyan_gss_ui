@@ -48,9 +48,10 @@ export const logoutApp = (data, navigate) => {
     return async (dispatch) => {
 
         const userId = parseInt(localStorage.getItem(Constants.localStorageKey.userId))
-        
+        const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
+
         const response = await POST(ApiEndpoits.logout,{
-            user_id: userId
+            mobile_number: mobileNumber
         })
 
         if (response?.status === 200) {

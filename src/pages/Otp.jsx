@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import Images from "../images/images";
+import Constants from "../utils/constants";
 
 export default function Otp() {
   const navigate = useNavigate();
@@ -58,9 +59,21 @@ export default function Otp() {
     }
 
     setLoading(true);
-
+    if (mobileNumber) {
+      if (!localStorage.getItem(Constants.localStorageKey.userId)) {
+        localStorage.setItem(Constants.localStorageKey.userId, mobileNumber);
+      }
+      localStorage.setItem(Constants.localStorageKey.mobileNumber, mobileNumber);
+    }
+    const kycUpdated = location.state?.kycUpdated === true || (() => {
+      try {
+        return JSON.parse(localStorage.getItem(Constants.localStorageKey.kycUpdated) || "false");
+      } catch (_) {
+        return false;
+      }
+    })();
     setTimeout(() => {
-      navigate("/home");
+      navigate(kycUpdated ? "/home" : "/user-details", { state: { mobile: mobileNumber } });
     }, 800);
   };
 

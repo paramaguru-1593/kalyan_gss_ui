@@ -125,6 +125,7 @@ export default function Schemes() {
                             schemeId: item.schemeId,
                             schemeName: item.name,
                             tenure: item.tenure,
+                            membershipFee: item.membershipFee,
                             defaultEmi: item.optedAmount ?? item.firstInstallment ?? 5000,
                             userId,
                           },
