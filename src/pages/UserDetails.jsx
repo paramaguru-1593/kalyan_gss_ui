@@ -181,7 +181,9 @@ export default function UserDetails() {
               value={kycFormik.values.mobile_no}
               onChange={(e) => kycFormik.setFieldValue("mobile_no", e.target.value.replace(/\D/g, "").slice(0, 10))}
               onBlur={kycFormik.handleBlur}
-              className="w-full h-12 px-4 rounded-lg border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full h-12 px-4 rounded-lg border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 opacity-80 cursor-not-allowed"
+              readOnly
+              disabled={true}
               maxLength={10}
             />
             {kycFormik.touched.mobile_no && kycFormik.errors.mobile_no && (

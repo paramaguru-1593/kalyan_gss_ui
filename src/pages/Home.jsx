@@ -6,7 +6,7 @@ import {
   FaCoins,
   FaChartLine,
 } from "react-icons/fa";
-import { getStoreGoldRate, getSchemesByMobileNumber } from "../api/apiHelper";
+import { getStoreGoldRate, getSchemesByMobileNumber, getProfileCompleteness } from "../api/apiHelper";
 import { fetchSchemeDetails } from "../store/scheme/schemesApi";
 import Constants from "../utils/constants";
 
@@ -200,7 +200,7 @@ function LiveGoldRate() {
 const sampleUser = {
   name: "Arun Kumar",
   phone: "9876543210",
-  profileCompletion: 60,
+  profileCompletion: 0,
 };
 
 export default function Home() {
@@ -209,6 +209,9 @@ export default function Home() {
   const [currentSchemes, setCurrentSchemes] = useState([]);
   const [schemesLoading, setSchemesLoading] = useState(true);
   const [schemesError, setSchemesError] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(null);
 
   const schemesState = useSelector((state) => state.scheme?.schemes?.data || {});
 
@@ -220,6 +223,38 @@ export default function Home() {
 
   useEffect(() => {
     const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
+    if (!mobileNumber) {
+      setProfileData(null);
+      setProfileLoading(false);
+      setProfileError(null);
+      return;
+    }
+
+    setProfileLoading(true);
+    setProfileError(null);
+    getProfileCompleteness(mobileNumber)
+      .then((res) => {
+        if (!res || res.status !== 200) {
+          setProfileData(null);
+          setProfileError(res?.data?.message || "Failed to load profile completeness");
+          return;
+        }
+
+        const payload = res.data?.profile_completeness ?? res.data;
+        // payload expected: { score, out_of, filled, total, missing_fields }
+        setProfileData(payload || null);
+      })
+      .catch(() => {
+        setProfileData(null);
+        setProfileError("Failed to load profile completeness");
+      })
+      .finally(() => setProfileLoading(false));
+  }, []);
+
+  useEffect(() => {
+    // const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
+     const mobileNumber = 9994795321
+
     if (!mobileNumber) {
       setCurrentSchemes([]);
       setSchemesLoading(false);
@@ -283,11 +318,15 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <FaUserCircle size={28} className="text-gray-400" />
                 <div>
-                  <h3 className="font-semibold">
-                    Complete Your Profile
-                  </h3>
+                  <h3 className="font-semibold">Complete Your Profile</h3>
                   <p className="text-gray-500 text-sm">
-                    {sampleUser.profileCompletion}% completed
+                    {profileLoading
+                      ? "Loading..."
+                      : profileError
+                      ? profileError
+                      : profileData
+                      ? `${profileData.score ?? 0}% completed`
+                      : `${sampleUser.profileCompletion}% completed`}
                   </p>
                 </div>
               </div>
@@ -296,10 +335,22 @@ export default function Home() {
                 <div
                   className="bg-amber-600 h-2 rounded transition-all duration-500"
                   style={{
-                    width: `${sampleUser.profileCompletion}%`,
+                    width: `${profileData ? (profileData.score ?? 0) : sampleUser.profileCompletion}%`,
                   }}
                 />
               </div>
+
+              {/* {profileData && Array.isArray(profileData.missing_fields) && profileData.missing_fields.length > 0 && (
+                <div className="mt-3 text-sm text-gray-600">
+                  <div className="font-medium text-sm mb-1">Missing fields:</div>
+                  <ul className="list-disc ml-5 text-xs text-rose-600">
+                    {profileData.missing_fields.slice(0, 6).map((f) => (
+                      <li key={f}>{f.replace(/_/g, " ")}</li>
+                    ))}
+                    {profileData.missing_fields.length > 6 && <li>and more...</li>}
+                  </ul>
+                </div>
+              )} */}
 
               <button
                 onClick={() => navigate("/profile-edit")}

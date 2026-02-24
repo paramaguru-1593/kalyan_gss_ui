@@ -78,3 +78,7 @@ export const updateCustomerBankDetails = (payload) =>
 // Update customer personal details (profile)
 export const updatePersonalDetails = (payload) =>
   POST(ApiEndpoits.updatePersonalDetails, payload);
+
+// Get profile completeness (score, filled, total, missing_fields)
+export const getProfileCompleteness = (mobileNumber) =>
+  POST(ApiEndpoits.profileCompleteness, { mobile_number: mobileNumber });
