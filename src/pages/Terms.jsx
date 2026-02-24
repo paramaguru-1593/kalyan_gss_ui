@@ -74,7 +74,7 @@ export default function Terms() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col pt-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col pt-4">
       {/* Navbar section */}
       <div className="flex items-center justify-between px-4 pb-4 border-b">
         <button
