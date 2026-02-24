@@ -150,7 +150,7 @@ export default function Header() {
             ))}
 
             {/* Terms button (desktop) - Styled same as other nav buttons */}
-            <button
+            {/* <button
               onClick={handleTermsClick}
               className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 relative overflow-hidden ${location.pathname.startsWith("/terms")
                 ? "text-amber-800 bg-gradient-to-r from-amber-100 to-amber-50 shadow-sm ring-1 ring-amber-200/60 scale-[1.02]"
@@ -161,7 +161,7 @@ export default function Header() {
               {location.pathname.startsWith("/terms") && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-amber-500 rounded-full animate-nav-underline" />
               )}
-            </button>
+            </button> */}
           </nav>
 
           {/* User & Mobile Toggle */}
@@ -262,12 +262,12 @@ export default function Header() {
                 {link.name}
               </button>
             ))}
-            <button
+            {/* <button
               onClick={handleTermsClick}
               className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-amber-50 hover:text-amber-800 transition animate-slide-up opacity-0 [animation-fill-mode:forwards] delay-300"
             >
               <span className="text-gray-600">Terms & Conditions</span>
-            </button>
+            </button> */}
 
             <div className="border-t border-gray-100 my-4 pt-4" />
             
