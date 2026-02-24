@@ -48,9 +48,9 @@ export const schemeSlice = createSlice({
             state.personalDetails.error = action.payload;
         },
         fetchTermsStart: (state) => {
-        state.terms.isLoading = true;
-        state.terms.error = null;
-        state.terms.data = null;
+            state.terms.isLoading = true;
+            state.terms.error = null;
+            state.terms.data = null;
         },
         fetchTermsSuccess: (state, action) => {
             state.terms.isLoading = false;
