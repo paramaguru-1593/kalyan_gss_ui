@@ -384,6 +384,7 @@ export default function ProfileEdit() {
 
           // Personal tab: first_name, last_name, mobile_no, email, gender, dateOfBirth, address (current)
           const addr = cd.address?.current_address || {};
+          // console.log("API KYC data:", cd.nominee_details?.nominee_name);
           const genderVal = cd.gender ? String(cd.gender).charAt(0).toUpperCase() + String(cd.gender).slice(1) : "";
           setPersonalPrefill({
             first_name: cd.first_name ?? "",
@@ -396,6 +397,11 @@ export default function ProfileEdit() {
             city: addr.current_city ?? "",
             stateName: addr.current_state ?? "",
             pincode: addr.current_pincode != null ? String(addr.current_pincode) : "",
+            nominee_name: cd.nominee_details?.nominee_name ?? "",
+            relation_of_nominee: cd.nominee_details?.relation_of_nominee ?? "",
+            nomineeDob: cd.nominee_details?.nominee_dob ?? "",
+            nomineeAddress: cd.nominee_details?.nominee_address ?? "",
+            nomineeContact: cd.nominee_details?.nominee_mobile_number ?? "",
           });
 
           // KYC tab: id_proof_type, id_proof_number, id_proof_front_side, id_proof_back_side (URLs from API satisfy "already uploaded")
