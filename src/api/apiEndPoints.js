@@ -18,6 +18,8 @@ const ApiEndpoits = {
     updatePersonalDetails: "/update-personal-details",
     // profile completeness
     profileCompleteness: "/profile-completeness",
+    // customer ledger report (by enrollment no)
+    getCustomerLedgerReport: "/externals/getCustomerLedgerReport",
 }
 
 export default ApiEndpoits;

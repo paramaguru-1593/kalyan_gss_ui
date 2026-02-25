@@ -29,7 +29,8 @@ export const schemeSlice = createSlice({
         },
         fetchSchemeDetailsSuccess: (state, action) => {
             state.schemes.isLoading = false;
-            state.schemes.data = action.payload;
+            state.schemes.data = Array.isArray(action.payload) ? action.payload : [];
+            state.schemes.error = null;
         },
         fetchSchemeDetailsFailure: (state, action) => {
             state.schemes.isLoading = false;

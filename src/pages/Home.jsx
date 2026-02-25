@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FaUserCircle,
-  FaCoins,
-  FaChartLine,
 } from "react-icons/fa";
 import { getStoreGoldRate, getSchemesByMobileNumber, getProfileCompleteness } from "../api/apiHelper";
 import { fetchSchemeDetails } from "../store/scheme/schemesApi";
 import Constants from "../utils/constants";
+import CurrentSchemes from "../components/CurrentSchemes";
+import Loader from "../components/Loader";
 
 /* ───────────────────── Design Config (Synced with Schemes.jsx) ───────────────────── */
 const CARD_THEMES = [
@@ -206,14 +206,14 @@ const sampleUser = {
 export default function Home() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [currentSchemes, setCurrentSchemes] = useState([]);
-  const [schemesLoading, setSchemesLoading] = useState(true);
-  const [schemesError, setSchemesError] = useState(null);
-  const [profileData, setProfileData] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState(null);
+  const isMounted = useRef(true);
 
-  const schemesState = useSelector((state) => state.scheme?.schemes?.data || {});
+  const [currentSchemes, setCurrentSchemes] = useState([]);
+  const [profileData, setProfileData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const schemesState = useSelector((state) => state.scheme?.schemes ?? { data: [], isLoading: false, error: null });
 
   useEffect(() => {
     const storeId = Constants.mykalyanStoreId || 3;
@@ -221,71 +221,69 @@ export default function Home() {
     dispatch(fetchSchemeDetails({ request, onSuccess: () => {} }));
   }, [dispatch]);
 
+  // Load getSchemesByMobileNumber and getProfileCompleteness in parallel; single loader until both finish.
   useEffect(() => {
-    const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
-    if (!mobileNumber) {
-      setProfileData(null);
-      setProfileLoading(false);
-      setProfileError(null);
-      return;
-    }
-
-    setProfileLoading(true);
-    setProfileError(null);
-    getProfileCompleteness(mobileNumber)
-      .then((res) => {
-        if (!res || res.status !== 200) {
-          setProfileData(null);
-          setProfileError(res?.data?.message || "Failed to load profile completeness");
-          return;
-        }
-
-        const payload = res.data?.profile_completeness ?? res.data;
-        // payload expected: { score, out_of, filled, total, missing_fields }
-        setProfileData(payload || null);
-      })
-      .catch(() => {
-        setProfileData(null);
-        setProfileError("Failed to load profile completeness");
-      })
-      .finally(() => setProfileLoading(false));
-  }, []);
-
-  useEffect(() => {
-    // const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
-     const mobileNumber = 9994795321
-
+    isMounted.current = true;
+    const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
     if (!mobileNumber) {
       setCurrentSchemes([]);
-      setSchemesLoading(false);
+      setProfileData(null);
+      setError(null);
+      setLoading(false);
       return;
     }
-    setSchemesLoading(true);
-    setSchemesError(null);
-    getSchemesByMobileNumber(mobileNumber)
-      .then((res) => {
-        if (!res || res.status !== 200) {
+
+    setLoading(true);
+    setError(null);
+
+    const fetchAll = async () => {
+      try {
+        const [schemesRes, profileRes] = await Promise.all([
+          getSchemesByMobileNumber(mobileNumber),
+          getProfileCompleteness(mobileNumber),
+        ]);
+
+        if (!isMounted.current) return;
+
+        // Handle schemes response
+        if (!schemesRes || schemesRes.status !== 200) {
           setCurrentSchemes([]);
-          setSchemesError(res?.data?.error?.message || "Failed to load schemes");
-          return;
+          setError(schemesRes?.data?.error?.message || "Failed to load schemes");
+        } else {
+          const err = schemesRes.data?.error;
+          if (err && err.status !== 200) {
+            setCurrentSchemes([]);
+            setError(err.message || "Failed to load schemes");
+          } else {
+            const responseData = schemesRes.data?.data?.Response?.data;
+            const list = responseData?.enrollmentList ?? responseData?.profile?.enrollmentList;
+            setCurrentSchemes(Array.isArray(list) ? list : []);
+            setError(null);
+          }
         }
-        const err = res.data?.error;
-        if (err && err.status !== 200) {
+
+        // Handle profile completeness response (don't override schemes error)
+        if (profileRes && profileRes.status === 200) {
+          const payload = profileRes.data?.profile_completeness ?? profileRes.data;
+          setProfileData(payload || null);
+        } else {
+          setProfileData(null);
+        }
+      } catch {
+        if (isMounted.current) {
           setCurrentSchemes([]);
-          return;
+          setProfileData(null);
+          setError("Failed to load data");
         }
-        const responseData = res.data?.data?.Response?.data;
-        if (!responseData?.profile?.enrollmentList?.length) {
-          setCurrentSchemes([]);
-          return;
-        }
-        setCurrentSchemes(responseData.profile.enrollmentList);
-      })
-      .catch(() => {
-        setCurrentSchemes([]);
-        setSchemesError("Failed to load schemes");
-      })
-      .finally(() => setSchemesLoading(false));
+      } finally {
+        if (isMounted.current) setLoading(false);
+      }
+    };
+
+    fetchAll();
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const transformRecommend = useCallback((s, i) => ({
@@ -299,8 +297,9 @@ export default function Home() {
   }), []);
 
   const recommendedSchemes = useMemo(() => {
-    if (!schemesState?.data) return [];
-    return schemesState.data.map(transformRecommend);
+    const data = schemesState.data;
+    if (!Array.isArray(data) || data.length === 0) return [];
+    return data.slice(0, 3).map(transformRecommend);
   }, [schemesState.data, transformRecommend]);
 
   return (
@@ -320,10 +319,10 @@ export default function Home() {
                 <div>
                   <h3 className="font-semibold">Complete Your Profile</h3>
                   <p className="text-gray-500 text-sm">
-                    {profileLoading
+                    {loading
                       ? "Loading..."
-                      : profileError
-                      ? profileError
+                      : error
+                      ? error
                       : profileData
                       ? `${profileData.score ?? 0}% completed`
                       : `${sampleUser.profileCompletion}% completed`}
@@ -354,7 +353,8 @@ export default function Home() {
 
               <button
                 onClick={() => navigate("/profile-edit")}
-                className="mt-4 w-full bg-amber-600 text-white py-2.5 rounded-xl font-semibold hover:bg-amber-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm"
+                disabled={loading}
+                className="mt-4 w-full bg-amber-600 text-white py-2.5 rounded-xl font-semibold hover:bg-amber-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Update Profile
               </button>
@@ -371,70 +371,37 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => navigate("/schemes")}
-                className="px-4 py-2.5 bg-white text-amber-700 border-2 border-amber-600 text-[13px] font-black rounded-xl hover:bg-amber-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm uppercase tracking-wider"
+                disabled={loading}
+                className="px-4 py-2.5 bg-white text-amber-700 border-2 border-amber-600 text-[13px] font-black rounded-xl hover:bg-amber-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm uppercase tracking-wider disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 View all schemes
               </button>
             </div>
 
-            {schemesLoading ? (
-              <div className="text-slate-400 py-12 text-center animate-pulse">Loading current schemes...</div>
-            ) : schemesError ? (
-              <div className="text-rose-500 py-4 text-center font-medium">{schemesError}</div>
-            ) : currentSchemes.length === 0 ? (
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-slate-400 font-medium">
-                No current schemes. Enroll to get started.
-              </div>
+            {loading ? (
+              <Loader message="Loading schemes and profile..." />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {currentSchemes.map((enrollment, i) => (
-                  <button
-                    type="button"
-                    key={enrollment.EnrollmentID}
-                    style={{ animationDelay: `${0.2 + i * 0.06}s` }}
-                    onClick={() => navigate("/scheme-details", { state: { enrollment } })}
-                    className="w-full text-left bg-white rounded-xl shadow p-4 animate-slide-up opacity-0 [animation-fill-mode:forwards] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-gray-100 cursor-pointer"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-bold text-[15px] text-slate-800 line-clamp-1">{enrollment.PlanType}</h4>
-                      <span className={`text-[10px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full ${enrollment.Status === "Open" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
-                        {enrollment.Status}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-[13px]">
-                        <span className="text-slate-500 flex items-center gap-1.5"><FaCoins className="text-amber-500" /> &emsp;Paid</span>
-                        <span className="font-bold text-slate-900">₹{Number(enrollment.TotalPaidAmount || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-[13px]">
-                        <span className="text-slate-500 flex items-center gap-1.5">💳&emsp; EMI</span>
-                        <span className="font-bold text-slate-900">₹{Number(enrollment.EMIAmount || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-[13px]">
-                        <span className="text-slate-500 flex items-center gap-1.5">📜&emsp; Tenure</span>
-                        <span className="font-bold text-slate-900 text-rose-500">{enrollment.NoMonths || 0}m</span>
-                      </div>
-                      <div className="mt-3 pt-2 border-t border-slate-50 flex justify-between items-center bg-green-50/50 -mx-4 px-4 py-2">
-                        <span className="text-[12px] font-bold text-green-700 flex items-center gap-1"><FaChartLine /> Redeemable</span>
-                        <span className="text-[14px] font-black text-green-600">₹{Number(enrollment.FinalRedeemableAmount || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <CurrentSchemes
+                schemes={currentSchemes}
+                loading={false}
+                error={error}
+              />
             )}
 
-            {/* Recommended schemes */}
+            {/* Recommended for You / Our Gold Saving Schemes — 3 cards from storeBasedSchemeData */}
             <div className="mt-10 mb-5">
               <h3 className="font-black text-xl text-slate-800 m-0">Recommended for You</h3>
+              <p className="text-slate-500 text-sm mt-1 mb-0">Our Gold Saving Schemes</p>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 md:overflow-visible md:mx-0 md:px-0">
+            {schemesState.isLoading ? (
+              <Loader message="Loading schemes..." />
+            ) : (
+            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 md:grid md:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 md:gap-6 md:overflow-visible md:mx-0 md:px-0">
               {recommendedSchemes.length > 0 ? (
                 recommendedSchemes.map((item, i) => (
                   <RecommendCard
-                    key={`${item.name}-${i}`}
+                    key={`${item.schemeId}-${item.name}-${i}`}
                     item={item}
                     index={i}
                     onEnroll={() =>
@@ -463,6 +430,7 @@ export default function Home() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       </main>

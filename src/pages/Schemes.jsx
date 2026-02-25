@@ -3,6 +3,7 @@ import { useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSchemeDetails } from "../store/scheme/schemesApi";
 import Constants from "../utils/constants";
+import Loader from "../components/Loader";
 
 /* ───────────────────── Theme Config ───────────────────── */
 const CARD_THEMES = [
@@ -90,6 +91,7 @@ const formatCurrency = (val) => {
 const transformScheme = (s, idx) => ({
   schemeId: s.id,
   name: s.scheme_name || `Scheme ${s.id}`,
+  description: s.description || s.scheme_description || null,
   tenure: s.no_of_installment ? Number(s.no_of_installment) : 12,
   tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
   membershipFee: s.min_installment_amount ?? null,
@@ -128,28 +130,32 @@ function InfoRow({ label, value, accentClass, icon, isLast }) {
 /* ───────────────────── SchemeCard ───────────────────── */
 function SchemeCard({ item, index, onEnroll }) {
   const t = item.theme;
+  const description = item.description || `Save with ₹${formatCurrency(item.optedAmount ?? item.firstInstallment)}/month for ${item.tenureStr} months.`;
 
   return (
     <div
-      style={{ animationDelay: `${index * 0.08}s` }}
-      className={`relative flex flex-col rounded-[20px] shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden animate-slideUp fill-mode-both ${t.bg}`}
+      style={{ animationDelay: `${index * 0.06}s` }}
+      className={`relative flex flex-col rounded-2xl shadow-md hover:shadow-xl border border-white/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden animate-slideUp [animation-fill-mode:both] ${t.bg}`}
     >
       {/* Header */}
-      <div className="p-5 pb-3.5 flex items-start gap-3.5">
+      <div className="p-5 pb-3 flex items-start gap-3">
         <ThemeIcon theme={t} />
         <div className="flex-1 min-w-0">
           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase mb-1.5 ${t.subtleIcon} ${t.accent}`}>
             {t.label}
           </span>
-          <h2 className="text-[15px] font-bold text-slate-800 m-0 leading-tight break-words">
+          <h2 className="text-base font-bold text-slate-800 m-0 leading-tight break-words">
             {item.name}
           </h2>
+          <p className="text-slate-500 text-[13px] mt-1.5 line-clamp-2">
+            {description}
+          </p>
         </div>
       </div>
 
       {/* Body */}
-      <div className="p-5 pt-4 flex-1 flex flex-col">
-        <div className="space-y-0">
+      <div className="px-5 pb-5 flex-1 flex flex-col">
+        <div className="space-y-0 rounded-xl bg-white/40 border border-white/60 p-4">
           {ROW_FIELDS.map((field, i) => (
             <InfoRow
               key={field.key}
@@ -162,11 +168,10 @@ function SchemeCard({ item, index, onEnroll }) {
           ))}
         </div>
 
-        <div className="flex-1 mt-5" />
-
         <button
+          type="button"
           onClick={onEnroll}
-          className={`w-full py-3.5 rounded-xl text-sm font-bold tracking-wide shadow-md transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.03] active:scale-[0.97] ${t.btn} ${t.btnText} ${t.btnHover}`}
+          className={`w-full mt-5 py-3.5 rounded-xl text-sm font-bold tracking-wide shadow-md transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] ${t.btn} ${t.btnText} ${t.btnHover}`}
         >
           Enroll in this Scheme
         </button>
@@ -182,21 +187,21 @@ export default function Schemes() {
   const userId = location.state?.userId || "";
   const dispatch = useDispatch();
 
-  const schemesState = useSelector((state) => state.scheme?.schemes?.data || {});
+  const schemesState = useSelector((state) => state.scheme?.schemes ?? { data: [], isLoading: false, error: null });
 
   useEffect(() => {
     dispatch(
       fetchSchemeDetails({
         request: { store_id: Constants.mykalyanStoreId || 3 },
-        onSuccess: (data) => console.log("Schemes fetched:", data),
+        onSuccess: () => {},
       })
     );
   }, [dispatch]);
 
-  const schemeList = useMemo(
-    () => (schemesState.data?.length ? schemesState.data.map(transformScheme) : []),
-    [schemesState.data]
-  );
+  const schemeList = useMemo(() => {
+    const data = schemesState.data;
+    return Array.isArray(data) ? data.map(transformScheme) : [];
+  }, [schemesState.data]);
 
   const handleEnroll = useCallback(
     (item) =>
@@ -242,8 +247,20 @@ export default function Schemes() {
           </p>
         </div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        {/* Cards — full list from storeBasedSchemeData */}
+        {schemesState.isLoading ? (
+          <Loader message="Loading gold saving schemes..." />
+        ) : schemesState.error ? (
+          <div className="col-span-full bg-white rounded-2xl border border-amber-200 py-12 px-6 text-center">
+            <p className="text-amber-700 font-medium mb-2">Unable to load schemes</p>
+            <p className="text-slate-500 text-sm">
+              {typeof schemesState.error === "string"
+                ? schemesState.error
+                : schemesState.error?.message ?? "Please try again later."}
+            </p>
+          </div>
+        ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
           {schemeList.length > 0 ? (
             schemeList.map((item, i) => (
               <SchemeCard
@@ -254,12 +271,13 @@ export default function Schemes() {
               />
             ))
           ) : (
-            <div className="col-span-full bg-white rounded-3xl border-2 border-dashed border-slate-200 py-16 px-8 text-center bg-transparent">
+            <div className="col-span-full bg-white rounded-2xl border-2 border-dashed border-slate-200 py-16 px-8 text-center">
               <h2 className="text-slate-700 font-bold text-lg mb-1.5">No Schemes Found</h2>
-              <p className="text-slate-400 text-sm">Currently no schemes available. Please try again later.</p>
+              <p className="text-slate-500 text-sm">No gold saving schemes available for this store. Please try again later.</p>
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

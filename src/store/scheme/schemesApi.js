@@ -12,24 +12,32 @@ import {
 import axios from "axios";  
 
 /**
- * Fetch schemes for a given store id using the centralized ApiEndpoits key.
- * Requests body: { store_id: number }
+ * Fetch schemes for a given store id using storeBasedSchemeData API.
+ * Request body: { store_id: number }. Normalizes response to always store an array.
  */
 export const fetchSchemeDetails = createAsyncThunk(
     "leadDetail/fetchSchemeDetails",
-    async ({ request, onSuccess }, { rejectWithValue, dispatch, getState }) => {
+    async ({ request, onSuccess }, { rejectWithValue, dispatch }) => {
         dispatch(fetchSchemeDetailsStart());
         try {
             const response = await POST(`${ApiEndpoits.storeBasedSchemeData}`, request);
-            dispatch(fetchSchemeDetailsSuccess(response.data));
-            
-            if (response?.status === 200) {
-                onSuccess(response.data);
+            const body = response?.data;
+            const err = body?.error;
+            if (response?.status >= 400 || (err && err.status >= 400)) {
+                const payload = err || body || "Failed to load schemes";
+                dispatch(fetchSchemeDetailsFailure(payload));
+                return rejectWithValue(payload);
             }
+            const list = Array.isArray(body) ? body : (body?.data ?? []);
+            dispatch(fetchSchemeDetailsSuccess(list));
+            if (response?.status === 200 && onSuccess) {
+                onSuccess(list);
+            }
+            return list;
         } catch (error) {
-            dispatch(fetchSchemeDetailsFailure(error.response?.data || error.message));
-            console.error(error,'error on fetch scheme details');
-            return rejectWithValue(error.response?.data || error.message);
+            const payload = error.response?.data || error.message;
+            dispatch(fetchSchemeDetailsFailure(payload));
+            return rejectWithValue(payload);
         }
     }
 );
