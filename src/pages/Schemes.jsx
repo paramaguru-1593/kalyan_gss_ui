@@ -220,7 +220,7 @@ export default function Schemes() {
 
   return (
     <>
-      <div className="max-w-[1240px] mx-auto px-4 py-8 md:py-16">
+      <div className="max-w-[1240px] mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2.5 bg-white border-2 border-amber-200 rounded-full py-2 px-6 mb-5 shadow-sm">

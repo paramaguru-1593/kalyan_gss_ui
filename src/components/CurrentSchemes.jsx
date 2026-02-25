@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaCoins, FaChartLine } from "react-icons/fa";
+import { FaCoins, FaChartLine, FaSearch } from "react-icons/fa";
 
 const INITIAL_DISPLAY_COUNT = 3;
 
@@ -104,10 +104,22 @@ function SchemeCard({ scheme, onViewDetails, index }) {
 export default function CurrentSchemes({ schemes = [], onViewDetails, loading, error }) {
   const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const expandRef = useRef(null);
 
   const isExpandable = schemes.length > INITIAL_DISPLAY_COUNT;
-  const displayList = showAll ? schemes : schemes.slice(0, INITIAL_DISPLAY_COUNT);
+  const baseList = showAll ? schemes : schemes.slice(0, INITIAL_DISPLAY_COUNT);
+
+  // When showAll: filter by PlanType or EnrollmentID (case-insensitive)
+  const displayList =
+    showAll && searchTerm.trim()
+      ? baseList.filter((scheme) => {
+          const term = searchTerm.trim().toLowerCase();
+          const planType = String(scheme.PlanType || "").toLowerCase();
+          const enrollmentId = String(scheme.EnrollmentID ?? "").toLowerCase();
+          return planType.includes(term) || enrollmentId.includes(term);
+        })
+      : baseList;
 
   const handleViewDetails = (scheme) => {
     if (onViewDetails) {
@@ -152,6 +164,26 @@ export default function CurrentSchemes({ schemes = [], onViewDetails, loading, e
 
   return (
     <div ref={expandRef} className="space-y-6">
+      {showAll && (
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative flex-1 max-w-md">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by Plan Type or Enrollment ID..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none text-slate-800 placeholder:text-slate-400 transition-all"
+            />
+          </div>
+          {searchTerm.trim() && (
+            <span className="text-sm text-slate-500">
+              {displayList.length} result{displayList.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={showAll ? "expanded" : "collapsed"}
@@ -161,14 +193,21 @@ export default function CurrentSchemes({ schemes = [], onViewDetails, loading, e
           transition={{ duration: 0.25 }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
         >
-          {displayList.map((scheme, index) => (
-            <SchemeCard
-              key={scheme.EnrollmentID}
-              scheme={scheme}
-              index={index}
-              onViewDetails={handleViewDetails}
-            />
-          ))}
+          {displayList.length === 0 ? (
+            <div className="col-span-full py-8 text-center text-slate-500 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="font-medium">No schemes match your search.</p>
+              <p className="text-sm mt-1">Try a different Plan Type or Enrollment ID.</p>
+            </div>
+          ) : (
+            displayList.map((scheme, index) => (
+              <SchemeCard
+                key={scheme.EnrollmentID}
+                scheme={scheme}
+                index={index}
+                onViewDetails={handleViewDetails}
+              />
+            ))
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -180,7 +219,10 @@ export default function CurrentSchemes({ schemes = [], onViewDetails, loading, e
         >
           <button
             type="button"
-            onClick={() => setShowAll((prev) => !prev)}
+            onClick={() => {
+              setShowAll((prev) => !prev);
+              if (showAll) setSearchTerm("");
+            }}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all duration-200"
           >
             {showAll ? "Show Less" : "Show All"}

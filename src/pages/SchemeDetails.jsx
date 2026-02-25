@@ -176,8 +176,8 @@ export default function SchemeDetails() {
   const customerDetails = ledgerData?.customer ?? ledgerData?.Customer ?? ledgerData?.customerDetails ?? {};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/20 to-slate-50">
-      <main className="max-w-4xl mx-auto px-4 py-6 md:px-8 pb-24">
+    <div className="">
+      <main className="max-w-4xl mx-auto">
         <button
           type="button"
           onClick={() => navigate("/home")}

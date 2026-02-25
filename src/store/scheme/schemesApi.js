@@ -5,6 +5,9 @@ import {
     fetchSchemeDetailsFailure,
     fetchSchemeDetailsStart,
     fetchSchemeDetailsSuccess,
+    fetchCustomerSchemesFailure,
+    fetchCustomerSchemesStart,
+    fetchCustomerSchemesSuccess,
     updatePersonalDetailsFailure,
     updatePersonalDetailsStart,
     updatePersonalDetailsSuccess,
@@ -37,6 +40,48 @@ export const fetchSchemeDetails = createAsyncThunk(
         } catch (error) {
             const payload = error.response?.data || error.message;
             dispatch(fetchSchemeDetailsFailure(payload));
+            return rejectWithValue(payload);
+        }
+    }
+);
+
+/**
+ * Fetch customer schemes for a given mobile number using getSchemesByMobileNumber API.
+ * It parses the enrollment list and stores it in Redux.
+ * The component can decide when to call this (e.g. only when Redux is empty).
+ */
+export const fetchCustomerSchemesByMobile = createAsyncThunk(
+    "scheme/fetchCustomerSchemesByMobile",
+    async ({ mobileNumber }, { rejectWithValue, dispatch }) => {
+        if (!mobileNumber) {
+            return rejectWithValue("Mobile number is required");
+        }
+        dispatch(fetchCustomerSchemesStart());
+        try {
+            const response = await GET(`${ApiEndpoits.getSchemesByMobileNumber}?MobileNumber=${encodeURIComponent(mobileNumber)}`);
+
+            if (!response || response.status !== 200) {
+                const payload = response?.data?.error?.message || "Failed to load customer schemes";
+                dispatch(fetchCustomerSchemesFailure(payload));
+                return rejectWithValue(payload);
+            }
+
+            const err = response.data?.error;
+            if (err && err.status !== 200) {
+                const payload = err.message || "Failed to load customer schemes";
+                dispatch(fetchCustomerSchemesFailure(payload));
+                return rejectWithValue(payload);
+            }
+
+            const responseData = response.data?.data?.Response?.data;
+            const list = responseData?.enrollmentList ?? responseData?.profile?.enrollmentList;
+            const normalized = Array.isArray(list) ? list : [];
+
+            dispatch(fetchCustomerSchemesSuccess({ data: normalized, mobileNumber }));
+            return normalized;
+        } catch (error) {
+            const payload = error.response?.data || error.message || "Failed to load customer schemes";
+            dispatch(fetchCustomerSchemesFailure(payload));
             return rejectWithValue(payload);
         }
     }

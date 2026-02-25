@@ -549,7 +549,7 @@ export default function ProfileEdit() {
   })();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-12">
+    <div className="flex flex-col">
       {/* Top bar - full width */}
       {/* <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 flex items-center w-full">
         <button
@@ -561,7 +561,7 @@ export default function ProfileEdit() {
       </div> */}
 
       {/* Full screen grid layout */}
-      <div className="flex-1 overflow-y-auto w-full px-4 md:px-6 py-6">
+      <div className="flex-1 overflow-y-auto w-full">
         {/* Header */}
         <div className="text-center mb-4 md:mb-6 relative">
           <button

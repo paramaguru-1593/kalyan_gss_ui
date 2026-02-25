@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   FaUserCircle,
 } from "react-icons/fa";
-import { getStoreGoldRate, getSchemesByMobileNumber, getProfileCompleteness } from "../api/apiHelper";
-import { fetchSchemeDetails } from "../store/scheme/schemesApi";
+import { getStoreGoldRate, getProfileCompleteness } from "../api/apiHelper";
+import { fetchSchemeDetails, fetchCustomerSchemesByMobile } from "../store/scheme/schemesApi";
 import Constants from "../utils/constants";
 import CurrentSchemes from "../components/CurrentSchemes";
 import Loader from "../components/Loader";
@@ -214,14 +214,27 @@ export default function Home() {
   const [error, setError] = useState(null);
 
   const schemesState = useSelector((state) => state.scheme?.schemes ?? { data: [], isLoading: false, error: null });
+  const customerSchemesState = useSelector(
+    (state) =>
+      state.scheme?.customerSchemes ?? {
+        data: [],
+        isLoading: false,
+        error: null,
+        lastLoadedMobile: null,
+      }
+  );
 
   useEffect(() => {
     const storeId = Constants.mykalyanStoreId || 3;
     const request = { store_id: storeId };
-    dispatch(fetchSchemeDetails({ request, onSuccess: () => {} }));
-  }, [dispatch]);
 
-  // Load getSchemesByMobileNumber and getProfileCompleteness in parallel; single loader until both finish.
+    // Call storebasedscheme_data only if we don't already have schemes in Redux (i.e., typically after a refresh).
+    if (!Array.isArray(schemesState.data) || schemesState.data.length === 0) {
+      dispatch(fetchSchemeDetails({ request, onSuccess: () => {} }));
+    }
+  }, [dispatch, schemesState.data]);
+
+  // Load customer schemes (getSchemesByMobileNumber via Redux) and getProfileCompleteness.
   useEffect(() => {
     isMounted.current = true;
     const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
@@ -238,31 +251,21 @@ export default function Home() {
 
     const fetchAll = async () => {
       try {
-        const [schemesRes, profileRes] = await Promise.all([
-          getSchemesByMobileNumber(mobileNumber),
-          getProfileCompleteness(mobileNumber),
-        ]);
+        // Only call getSchemesByMobileNumber (via thunk) when Redux doesn't already have data for this mobile.
+        if (
+          !Array.isArray(customerSchemesState.data) ||
+          customerSchemesState.data.length === 0 ||
+          customerSchemesState.lastLoadedMobile !== mobileNumber
+        ) {
+          await dispatch(fetchCustomerSchemesByMobile({ mobileNumber }));
+        }
 
         if (!isMounted.current) return;
 
-        // Handle schemes response
-        if (!schemesRes || schemesRes.status !== 200) {
-          setCurrentSchemes([]);
-          setError(schemesRes?.data?.error?.message || "Failed to load schemes");
-        } else {
-          const err = schemesRes.data?.error;
-          if (err && err.status !== 200) {
-            setCurrentSchemes([]);
-            setError(err.message || "Failed to load schemes");
-          } else {
-            const responseData = schemesRes.data?.data?.Response?.data;
-            const list = responseData?.enrollmentList ?? responseData?.profile?.enrollmentList;
-            setCurrentSchemes(Array.isArray(list) ? list : []);
-            setError(null);
-          }
-        }
+        const profileRes = await getProfileCompleteness(mobileNumber);
 
-        // Handle profile completeness response (don't override schemes error)
+        if (!isMounted.current) return;
+
         if (profileRes && profileRes.status === 200) {
           const payload = profileRes.data?.profile_completeness ?? profileRes.data;
           setProfileData(payload || null);
@@ -271,7 +274,6 @@ export default function Home() {
         }
       } catch {
         if (isMounted.current) {
-          setCurrentSchemes([]);
           setProfileData(null);
           setError("Failed to load data");
         }
@@ -305,12 +307,12 @@ export default function Home() {
   return (
         <div className="md:grid md:grid-cols-12 md:gap-8">
           {/* Left Column (Profile & Live Rate) */}
-          <div className="md:col-span-4 lg:col-span-3">
+          <div className="md:col-span-4 lg:col-span-3 md:sticky md:top-6 md:self-start">
              {/* Live rate */}
             <LiveGoldRate />
 
             {/* Profile completion */}
-            <div className="bg-white rounded-xl shadow p-5 mb-6 md:sticky md:top-6 animate-slide-up hover:shadow-lg transition-all duration-300">
+            <div className="bg-white rounded-xl shadow p-5 mb-6 animate-slide-up hover:shadow-lg transition-all duration-300">
               <div className="flex items-center gap-3">
                 <FaUserCircle size={28} className="text-gray-400" />
                 <div>
@@ -365,6 +367,24 @@ export default function Home() {
               <h3 className="font-semibold text-lg mb-0">
                 Current Schemes
               </h3>
+            </div>
+
+            {loading || customerSchemesState.isLoading ? (
+              <Loader message="Loading schemes and profile..." />
+            ) : (
+              <CurrentSchemes
+                schemes={customerSchemesState.data}
+                loading={false}
+                error={error || customerSchemesState.error}
+              />
+            )}
+
+            {/* Recommended for You / Our Gold Saving Schemes — 3 cards from storeBasedSchemeData */}
+            <div className="mt-10 mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-black text-xl text-slate-800 m-0">Recommended for You</h3>
+                <p className="text-slate-500 text-sm mt-1 mb-0">Our Gold Saving Schemes</p>
+              </div>
               <button
                 type="button"
                 onClick={() => navigate("/schemes")}
@@ -373,22 +393,6 @@ export default function Home() {
               >
                 View all schemes
               </button>
-            </div>
-
-            {loading ? (
-              <Loader message="Loading schemes and profile..." />
-            ) : (
-              <CurrentSchemes
-                schemes={currentSchemes}
-                loading={false}
-                error={error}
-              />
-            )}
-
-            {/* Recommended for You / Our Gold Saving Schemes — 3 cards from storeBasedSchemeData */}
-            <div className="mt-10 mb-5">
-              <h3 className="font-black text-xl text-slate-800 m-0">Recommended for You</h3>
-              <p className="text-slate-500 text-sm mt-1 mb-0">Our Gold Saving Schemes</p>
             </div>
 
             {schemesState.isLoading ? (
