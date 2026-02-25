@@ -94,14 +94,15 @@ export default function Header() {
 
   return (
     <>
+    <div className="md:max-w-9xl mx-auto lg:bg-gradient-to-br from-amber-500 to-amber-700 lg:h-32 sticky top-0 z-50">
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out lg:w-[85vw] mx-auto lg:mt-16 rounded-t-xl ${
           scrolled
             ? "bg-white/90 backdrop-blur-md shadow-lg py-2 border-b border-amber-100/50"
             : "bg-white py-4 shadow-sm"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between">
+        <div className="max-w-9xl mx-auto px-4 md:px-8 flex items-center justify-between">
           {/* Logo */}
           <div
             className="flex items-center gap-3 cursor-pointer group"
@@ -293,6 +294,7 @@ export default function Header() {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </>
   );

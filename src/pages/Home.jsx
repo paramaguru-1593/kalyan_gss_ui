@@ -269,9 +269,6 @@ export default function Home() {
   }, [schemesState.data, transformRecommend]);
 
   return (
-    <div className="min-h-screen bg-gray-100 selection:bg-amber-100">
-      <div className="bg-gray-300 h-0.5" />
-      <main className="max-w-7xl mx-auto px-4 py-6 md:px-8">
         <div className="md:grid md:grid-cols-12 md:gap-8">
           {/* Left Column (Profile & Live Rate) */}
           <div className="md:col-span-4 lg:col-span-3">
@@ -414,7 +411,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    
   );
 }

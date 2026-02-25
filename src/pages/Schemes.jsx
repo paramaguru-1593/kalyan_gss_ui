@@ -214,10 +214,7 @@ export default function Schemes() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans selection:bg-amber-100">
-      {/* Decorative top bar */}
-      <div className="bg-gray-300 h-0.5" />
-
+    <>
       <div className="max-w-[1240px] mx-auto px-4 py-8 md:py-16">
         {/* Header */}
         <div className="text-center mb-10">
@@ -261,6 +258,6 @@ export default function Schemes() {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }

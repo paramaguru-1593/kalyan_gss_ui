@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+
 const SAMPLE_TRANSACTIONS = [
   {
     schemeType: "DHAN SAMRIDDHI",
@@ -24,7 +25,6 @@ const SAMPLE_TRANSACTIONS = [
 
 export default function Transactions() {
   const navigate = useNavigate();
-  const location = useLocation();
   const userId = location.state?.userId;
 
   const [transactions, setTransactions] = useState([]);
@@ -139,25 +139,26 @@ export default function Transactions() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col animate-fade-in">
-      <div className="bg-gray-300 h-0.5" />
-      <div className="flex-1 overflow-y-auto px-5 pb-6 md:px-8">
-        <div className="max-w-4xl mx-auto w-full">
+    <>
+      <div className="min-h-screen flex flex-col animate-fade-in">
+        <div className="flex-1 overflow-y-auto px-5 pb-6 md:px-8">
+          <div className="max-w-4xl mx-auto w-full">
             <div className="text-center mt-4 mb-6 md:mt-8 md:mb-10">
-            <h1 className="text-xl md:text-3xl font-bold text-gray-900">
+              <h1 className="text-xl md:text-3xl font-bold text-gray-900">
                 Transaction History
-            </h1>
-            <p className="text-sm md:text-base text-gray-500 mt-2">
+              </h1>
+              <p className="text-sm md:text-base text-gray-500 mt-2">
                 View the payments made towards your gold saving schemes.
-            </p>
+              </p>
             </div>
 
             <div className="md:grid md:grid-cols-2 md:gap-6">
-                {renderContent()}
+              {renderContent()}
             </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
