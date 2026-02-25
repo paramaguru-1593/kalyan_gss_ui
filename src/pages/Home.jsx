@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FaUserCircle,
-  FaCoins,
-  FaChartLine,
 } from "react-icons/fa";
-import { getStoreGoldRate, getSchemesByMobileNumber } from "../api/apiHelper";
-import { fetchSchemeDetails } from "../store/scheme/schemesApi";
+import { getStoreGoldRate, getProfileCompleteness } from "../api/apiHelper";
+import { fetchSchemeDetails, fetchCustomerSchemesByMobile } from "../store/scheme/schemesApi";
 import Constants from "../utils/constants";
+import CurrentSchemes from "../components/CurrentSchemes";
+import Loader from "../components/Loader";
 
 /* ───────────────────── Design Config (Synced with Schemes.jsx) ───────────────────── */
 const CARD_THEMES = [
@@ -200,57 +200,92 @@ function LiveGoldRate() {
 const sampleUser = {
   name: "Arun Kumar",
   phone: "9876543210",
-  profileCompletion: 60,
+  profileCompletion: 0,
 };
 
 export default function Home() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [currentSchemes, setCurrentSchemes] = useState([]);
-  const [schemesLoading, setSchemesLoading] = useState(true);
-  const [schemesError, setSchemesError] = useState(null);
+  const isMounted = useRef(true);
 
-  const schemesState = useSelector((state) => state.scheme?.schemes?.data || {});
+  const [currentSchemes, setCurrentSchemes] = useState([]);
+  const [profileData, setProfileData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const schemesState = useSelector((state) => state.scheme?.schemes ?? { data: [], isLoading: false, error: null });
+  const customerSchemesState = useSelector(
+    (state) =>
+      state.scheme?.customerSchemes ?? {
+        data: [],
+        isLoading: false,
+        error: null,
+        lastLoadedMobile: null,
+      }
+  );
 
   useEffect(() => {
     const storeId = Constants.mykalyanStoreId || 3;
     const request = { store_id: storeId };
-    dispatch(fetchSchemeDetails({ request, onSuccess: () => {} }));
-  }, [dispatch]);
 
+    // Call storebasedscheme_data only if we don't already have schemes in Redux (i.e., typically after a refresh).
+    if (!Array.isArray(schemesState.data) || schemesState.data.length === 0) {
+      dispatch(fetchSchemeDetails({ request, onSuccess: () => {} }));
+    }
+  }, [dispatch, schemesState.data]);
+
+  // Load customer schemes (getSchemesByMobileNumber via Redux) and getProfileCompleteness.
   useEffect(() => {
-    const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber);
+    isMounted.current = true;
+    const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
     if (!mobileNumber) {
       setCurrentSchemes([]);
-      setSchemesLoading(false);
+      setProfileData(null);
+      setError(null);
+      setLoading(false);
       return;
     }
-    setSchemesLoading(true);
-    setSchemesError(null);
-    getSchemesByMobileNumber(mobileNumber)
-      .then((res) => {
-        if (!res || res.status !== 200) {
-          setCurrentSchemes([]);
-          setSchemesError(res?.data?.error?.message || "Failed to load schemes");
-          return;
+
+    setLoading(true);
+    setError(null);
+
+    const fetchAll = async () => {
+      try {
+        // Only call getSchemesByMobileNumber (via thunk) when Redux doesn't already have data for this mobile.
+        if (
+          !Array.isArray(customerSchemesState.data) ||
+          customerSchemesState.data.length === 0 ||
+          customerSchemesState.lastLoadedMobile !== mobileNumber
+        ) {
+          await dispatch(fetchCustomerSchemesByMobile({ mobileNumber }));
         }
-        const err = res.data?.error;
-        if (err && err.status !== 200) {
-          setCurrentSchemes([]);
-          return;
+
+        if (!isMounted.current) return;
+
+        const profileRes = await getProfileCompleteness(mobileNumber);
+
+        if (!isMounted.current) return;
+
+        if (profileRes && profileRes.status === 200) {
+          const payload = profileRes.data?.profile_completeness ?? profileRes.data;
+          setProfileData(payload || null);
+        } else {
+          setProfileData(null);
         }
-        const responseData = res.data?.data?.Response?.data;
-        if (!responseData?.profile?.enrollmentList?.length) {
-          setCurrentSchemes([]);
-          return;
+      } catch {
+        if (isMounted.current) {
+          setProfileData(null);
+          setError("Failed to load data");
         }
-        setCurrentSchemes(responseData.profile.enrollmentList);
-      })
-      .catch(() => {
-        setCurrentSchemes([]);
-        setSchemesError("Failed to load schemes");
-      })
-      .finally(() => setSchemesLoading(false));
+      } finally {
+        if (isMounted.current) setLoading(false);
+      }
+    };
+
+    fetchAll();
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const transformRecommend = useCallback((s, i) => ({
@@ -264,27 +299,32 @@ export default function Home() {
   }), []);
 
   const recommendedSchemes = useMemo(() => {
-    if (!schemesState?.data) return [];
-    return schemesState.data.map(transformRecommend);
+    const data = schemesState.data;
+    if (!Array.isArray(data) || data.length === 0) return [];
+    return data.slice(0, 3).map(transformRecommend);
   }, [schemesState.data, transformRecommend]);
 
   return (
         <div className="md:grid md:grid-cols-12 md:gap-8">
           {/* Left Column (Profile & Live Rate) */}
-          <div className="md:col-span-4 lg:col-span-3">
+          <div className="md:col-span-4 lg:col-span-3 md:sticky md:top-6 md:self-start">
              {/* Live rate */}
             <LiveGoldRate />
 
             {/* Profile completion */}
-            <div className="bg-white rounded-xl shadow p-5 mb-6 md:sticky md:top-6 animate-slide-up hover:shadow-lg transition-all duration-300">
+            <div className="bg-white rounded-xl shadow p-5 mb-6 animate-slide-up hover:shadow-lg transition-all duration-300">
               <div className="flex items-center gap-3">
                 <FaUserCircle size={28} className="text-gray-400" />
                 <div>
-                  <h3 className="font-semibold">
-                    Complete Your Profile
-                  </h3>
+                  <h3 className="font-semibold">Complete Your Profile</h3>
                   <p className="text-gray-500 text-sm">
-                    {sampleUser.profileCompletion}% completed
+                    {loading
+                      ? "Loading..."
+                      : error
+                      ? error
+                      : profileData
+                      ? `${profileData.score ?? 0}% completed`
+                      : `${sampleUser.profileCompletion}% completed`}
                   </p>
                 </div>
               </div>
@@ -293,14 +333,27 @@ export default function Home() {
                 <div
                   className="bg-amber-600 h-2 rounded transition-all duration-500"
                   style={{
-                    width: `${sampleUser.profileCompletion}%`,
+                    width: `${profileData ? (profileData.score ?? 0) : sampleUser.profileCompletion}%`,
                   }}
                 />
               </div>
 
+              {/* {profileData && Array.isArray(profileData.missing_fields) && profileData.missing_fields.length > 0 && (
+                <div className="mt-3 text-sm text-gray-600">
+                  <div className="font-medium text-sm mb-1">Missing fields:</div>
+                  <ul className="list-disc ml-5 text-xs text-rose-600">
+                    {profileData.missing_fields.slice(0, 6).map((f) => (
+                      <li key={f}>{f.replace(/_/g, " ")}</li>
+                    ))}
+                    {profileData.missing_fields.length > 6 && <li>and more...</li>}
+                  </ul>
+                </div>
+              )} */}
+
               <button
                 onClick={() => navigate("/profile-edit")}
-                className="mt-4 w-full bg-amber-600 text-white py-2.5 rounded-xl font-semibold hover:bg-amber-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm"
+                disabled={loading}
+                className="mt-4 w-full bg-amber-600 text-white py-2.5 rounded-xl font-semibold hover:bg-amber-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Update Profile
               </button>
@@ -314,73 +367,42 @@ export default function Home() {
               <h3 className="font-semibold text-lg mb-0">
                 Current Schemes
               </h3>
+            </div>
+
+            {loading || customerSchemesState.isLoading ? (
+              <Loader message="Loading schemes and profile..." />
+            ) : (
+              <CurrentSchemes
+                schemes={customerSchemesState.data}
+                loading={false}
+                error={error || customerSchemesState.error}
+              />
+            )}
+
+            {/* Recommended for You / Our Gold Saving Schemes — 3 cards from storeBasedSchemeData */}
+            <div className="mt-10 mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-black text-xl text-slate-800 m-0">Recommended for You</h3>
+                <p className="text-slate-500 text-sm mt-1 mb-0">Our Gold Saving Schemes</p>
+              </div>
               <button
                 type="button"
                 onClick={() => navigate("/schemes")}
-                className="px-4 py-2.5 bg-white text-amber-700 border-2 border-amber-600 text-[13px] font-black rounded-xl hover:bg-amber-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm uppercase tracking-wider"
+                disabled={loading}
+                className="px-4 py-2.5 bg-white text-amber-700 border-2 border-amber-600 text-[13px] font-black rounded-xl hover:bg-amber-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-sm uppercase tracking-wider disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 View all schemes
               </button>
             </div>
 
-            {schemesLoading ? (
-              <div className="text-slate-400 py-12 text-center animate-pulse">Loading current schemes...</div>
-            ) : schemesError ? (
-              <div className="text-rose-500 py-4 text-center font-medium">{schemesError}</div>
-            ) : currentSchemes.length === 0 ? (
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-slate-400 font-medium">
-                No current schemes. Enroll to get started.
-              </div>
+            {schemesState.isLoading ? (
+              <Loader message="Loading schemes..." />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {currentSchemes.map((enrollment, i) => (
-                  <button
-                    type="button"
-                    key={enrollment.EnrollmentID}
-                    style={{ animationDelay: `${0.2 + i * 0.06}s` }}
-                    onClick={() => navigate("/scheme-details", { state: { enrollment } })}
-                    className="w-full text-left bg-white rounded-xl shadow p-4 animate-slide-up opacity-0 [animation-fill-mode:forwards] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-gray-100 cursor-pointer"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-bold text-[15px] text-slate-800 line-clamp-1">{enrollment.PlanType}</h4>
-                      <span className={`text-[10px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full ${enrollment.Status === "Open" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
-                        {enrollment.Status}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-[13px]">
-                        <span className="text-slate-500 flex items-center gap-1.5"><FaCoins className="text-amber-500" /> &emsp;Paid</span>
-                        <span className="font-bold text-slate-900">₹{Number(enrollment.TotalPaidAmount || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-[13px]">
-                        <span className="text-slate-500 flex items-center gap-1.5">💳&emsp; EMI</span>
-                        <span className="font-bold text-slate-900">₹{Number(enrollment.EMIAmount || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-[13px]">
-                        <span className="text-slate-500 flex items-center gap-1.5">📜&emsp; Tenure</span>
-                        <span className="font-bold text-slate-900 text-rose-500">{enrollment.NoMonths || 0}m</span>
-                      </div>
-                      <div className="mt-3 pt-2 border-t border-slate-50 flex justify-between items-center bg-green-50/50 -mx-4 px-4 py-2">
-                        <span className="text-[12px] font-bold text-green-700 flex items-center gap-1"><FaChartLine /> Redeemable</span>
-                        <span className="text-[14px] font-black text-green-600">₹{Number(enrollment.FinalRedeemableAmount || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Recommended schemes */}
-            <div className="mt-10 mb-5">
-              <h3 className="font-black text-xl text-slate-800 m-0">Recommended for You</h3>
-            </div>
-
-            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 md:overflow-visible md:mx-0 md:px-0">
+            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 md:grid md:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 md:gap-6 md:overflow-visible md:mx-0 md:px-0">
               {recommendedSchemes.length > 0 ? (
                 recommendedSchemes.map((item, i) => (
                   <RecommendCard
-                    key={`${item.name}-${i}`}
+                    key={`${item.schemeId}-${item.name}-${i}`}
                     item={item}
                     index={i}
                     onEnroll={() =>
@@ -409,6 +431,7 @@ export default function Home() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
     

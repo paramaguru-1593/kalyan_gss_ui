@@ -140,7 +140,7 @@ export default function Transactions() {
 
   return (
     <>
-      <div className="min-h-screen flex flex-col animate-fade-in">
+      <div className="flex flex-col animate-fade-in">
         <div className="flex-1 overflow-y-auto px-5 pb-6 md:px-8">
           <div className="max-w-4xl mx-auto w-full">
             <div className="text-center mt-4 mb-6 md:mt-8 md:mb-10">

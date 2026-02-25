@@ -6,6 +6,12 @@ const initialState = {
         data: [],
         error: null,
     },
+    customerSchemes: {
+        isLoading: false,
+        data: [],
+        error: null,
+        lastLoadedMobile: null,
+    },
     personalDetails: {
         isLoading: false,
         data: [],
@@ -29,11 +35,26 @@ export const schemeSlice = createSlice({
         },
         fetchSchemeDetailsSuccess: (state, action) => {
             state.schemes.isLoading = false;
-            state.schemes.data = action.payload;
+            state.schemes.data = Array.isArray(action.payload) ? action.payload : [];
+            state.schemes.error = null;
         },
         fetchSchemeDetailsFailure: (state, action) => {
             state.schemes.isLoading = false;
             state.schemes.error = action.payload;
+        },
+        fetchCustomerSchemesStart: (state) => {
+            state.customerSchemes.isLoading = true;
+            state.customerSchemes.error = null;
+        },
+        fetchCustomerSchemesSuccess: (state, action) => {
+            state.customerSchemes.isLoading = false;
+            state.customerSchemes.data = Array.isArray(action.payload.data) ? action.payload.data : [];
+            state.customerSchemes.lastLoadedMobile = action.payload.mobileNumber || null;
+            state.customerSchemes.error = null;
+        },
+        fetchCustomerSchemesFailure: (state, action) => {
+            state.customerSchemes.isLoading = false;
+            state.customerSchemes.error = action.payload;
         },
         updatePersonalDetailsStart: (state) => {
             state.personalDetails.isLoading = true;
@@ -72,6 +93,9 @@ export const {
     fetchSchemeDetailsStart,
     fetchSchemeDetailsSuccess,
     fetchSchemeDetailsFailure,
+    fetchCustomerSchemesStart,
+    fetchCustomerSchemesSuccess,
+    fetchCustomerSchemesFailure,
     updatePersonalDetailsStart,
     updatePersonalDetailsSuccess,
     updatePersonalDetailsFailure,

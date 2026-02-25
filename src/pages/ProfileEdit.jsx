@@ -384,6 +384,7 @@ export default function ProfileEdit() {
 
           // Personal tab: first_name, last_name, mobile_no, email, gender, dateOfBirth, address (current)
           const addr = cd.address?.current_address || {};
+          // console.log("API KYC data:", cd.nominee_details?.nominee_name);
           const genderVal = cd.gender ? String(cd.gender).charAt(0).toUpperCase() + String(cd.gender).slice(1) : "";
           setPersonalPrefill({
             first_name: cd.first_name ?? "",
@@ -396,6 +397,11 @@ export default function ProfileEdit() {
             city: addr.current_city ?? "",
             stateName: addr.current_state ?? "",
             pincode: addr.current_pincode != null ? String(addr.current_pincode) : "",
+            nominee_name: cd.nominee_details?.nominee_name ?? "",
+            relation_of_nominee: cd.nominee_details?.relation_of_nominee ?? "",
+            nomineeDob: cd.nominee_details?.nominee_dob ?? "",
+            nomineeAddress: cd.nominee_details?.nominee_address ?? "",
+            nomineeContact: cd.nominee_details?.nominee_mobile_number ?? "",
           });
 
           // KYC tab: id_proof_type, id_proof_number, id_proof_front_side, id_proof_back_side (URLs from API satisfy "already uploaded")
@@ -543,28 +549,34 @@ export default function ProfileEdit() {
   })();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-12">
+    <div className="flex flex-col">
       {/* Top bar - full width */}
-      <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 flex items-center w-full">
+      {/* <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 flex items-center w-full">
         <button
           onClick={() => navigate(-1)}
           className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-gray-100 rounded-lg transition"
         >
           <FaArrowLeft />
         </button>
-      </div>
+      </div> */}
 
       {/* Full screen grid layout */}
-      <div className="flex-1 overflow-y-auto w-full px-4 md:px-6 py-6">
+      <div className="flex-1 overflow-y-auto w-full">
         {/* Header */}
-        <div className="text-center mb-4 md:mb-6">
-          <div className="w-16 h-16 mx-auto bg-sky-100 rounded-xl flex items-center justify-center mb-3">
-            <svg className="w-8 h-8 text-sky-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path fillRule="evenodd" d="M12 2a4 4 0 00-4 4v2a4 4 0 008 0V6a4 4 0 00-4-4zm-6 8a6 6 0 0112 0v5a6 6 0 01-12 0v-5z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">Edit Profile</h1>
-          <p className="text-sm text-gray-500 mt-1">Update your information by section.</p>
+        <div className="text-center mb-4 md:mb-6 relative">
+          <button
+            onClick={() => navigate(-1)}
+            className="absolute w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-gray-100 rounded-lg transition"
+          >
+            <FaArrowLeft />
+          </button>
+            <div className="w-16 h-16 mx-auto bg-sky-100 rounded-xl flex items-center justify-center mb-3">
+              <svg className="w-8 h-8 text-sky-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path fillRule="evenodd" d="M12 2a4 4 0 00-4 4v2a4 4 0 008 0V6a4 4 0 00-4-4zm-6 8a6 6 0 0112 0v5a6 6 0 01-12 0v-5z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">Edit Profile</h1>
+            <p className="text-sm text-gray-500 mt-1">Update your information by section.</p>
         </div>
 
         {/* Tabs */}
@@ -661,11 +673,13 @@ export default function ProfileEdit() {
                     type="tel"
                     inputMode="numeric"
                     name="mobile_no"
+                    readOnly
+                    disabled={true}
                     value={personalFormik.values.mobile_no}
                     onChange={(e) => personalFormik.setFieldValue("mobile_no", e.target.value.replace(/\D/g, "").slice(0, 10))}
                     onBlur={personalFormik.handleBlur}
                     placeholder="10-digit mobile number"
-                    className={inputClass}
+                    className={`${inputClass} opacity-80 cursor-not-allowed`}
                     maxLength={10}
                   />
                   {personalFormik.touched.mobile_no && personalFormik.errors.mobile_no && (
@@ -915,7 +929,9 @@ export default function ProfileEdit() {
                   value={kycFormik.values.mobile_no}
                   onChange={(e) => kycFormik.setFieldValue("mobile_no", e.target.value.replace(/\D/g, "").slice(0, 10))}
                   onBlur={kycFormik.handleBlur}
-                  className={inputClass}
+                  readOnly
+                  disabled={true}
+                  className={`${inputClass} opacity-80 cursor-not-allowed`}
                   maxLength={10}
                 />
                 {kycFormik.touched.mobile_no && kycFormik.errors.mobile_no && (
@@ -1005,7 +1021,9 @@ export default function ProfileEdit() {
                       value={bankFormik.values.mobile_no}
                       onChange={(e) => bankFormik.setFieldValue("mobile_no", e.target.value.replace(/\D/g, "").slice(0, 10))}
                       onBlur={bankFormik.handleBlur}
-                      className={inputClass}
+                      readOnly
+                      disabled={true}
+                      className={`${inputClass} opacity-80 cursor-not-allowed`}
                       maxLength={10}
                     />
                     {bankFormik.touched.mobile_no && bankFormik.errors.mobile_no && (

@@ -16,6 +16,10 @@ const ApiEndpoits = {
     customerKycUpdation: "/customerkycupdation",
     customerBankDetailUpdation: "/customerbankdetail_updation",
     updatePersonalDetails: "/update-personal-details",
+    // profile completeness
+    profileCompleteness: "/profile-completeness",
+    // customer ledger report (by enrollment no)
+    getCustomerLedgerReport: "/externals/getCustomerLedgerReport",
 }
 
 export default ApiEndpoits;
