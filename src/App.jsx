@@ -30,7 +30,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/schemes" element={<Schemes />} />
-            <Route path="/terms/:schemeId" element={<Terms />} />
+          <Route path="/terms/:schemeId" element={<Terms />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/profile-edit" element={<ProfileEdit />} />
           <Route path="/scheme-details" element={<SchemeDetails />} />
