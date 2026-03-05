@@ -16,7 +16,7 @@ const Constants = {
         mobileNumber: "mobileNumber",
         kycUpdated: "kycUpdated",
     },
-    mykalyanStoreId:115,
+    mykalyanStoreId:3,
     pageSize :5,
     kjStoreLink: "https://store.kalyanjewellers.net/",
     goldSavingLink:"https://www.kalyanmatrimony.com/gold-saving-scheme-online",

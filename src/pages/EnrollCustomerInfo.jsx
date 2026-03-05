@@ -165,7 +165,9 @@ export default function EnrollCustomerInfo() {
                 View receipt (Bond)
               </button>
               <button
-                onClick={() => navigate("/home")}
+                onClick={() => {
+                  navigate("/home", { state: { isFrom : 'enrollment' } })
+                }}
                 className="w-full border border-gray-300 py-3 rounded-xl font-semibold hover:bg-gray-50 transition"
               >
                 Go to Home

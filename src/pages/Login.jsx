@@ -27,8 +27,10 @@ export default function Login() {
     
     if (response?.data?.status === "success" && response?.data?.token) {
       localStorage.setItem(Constants.localStorageKey.accessToken, response.data.token);
-      localStorage.setItem(Constants.localStorageKey.mobileNumber, response.data.mobile_number || mobile);
+      localStorage.setItem(Constants.localStorageKey.mobileNumber, response.data.user.mobile_number || mobile);
       localStorage.setItem(Constants.localStorageKey.tokenType, "Bearer");
+      localStorage.setItem('customerCode', response.data.user.customer_code);
+      localStorage.setItem('customerId', response.data.user.customerId);
       console.log(response.data);
       
       const kycUpdated = response.data.kyc_updated === true;

@@ -141,9 +141,9 @@ function SchemeCard({ item, index, onEnroll }) {
       <div className="p-5 pb-3 flex items-start gap-3">
         <ThemeIcon theme={t} />
         <div className="flex-1 min-w-0">
-          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase mb-1.5 ${t.subtleIcon} ${t.accent}`}>
+          {/* <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase mb-1.5 ${t.subtleIcon} ${t.accent}`}>
             {t.label}
-          </span>
+          </span> */}
           <h2 className="text-base font-bold text-slate-800 m-0 leading-tight break-words">
             {item.name}
           </h2>

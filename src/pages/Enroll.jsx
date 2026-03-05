@@ -49,7 +49,7 @@ export default function Enroll() {
   const schemeName = state.schemeName || "Scheme";
 
   useEffect(() => {
-    const custId = localStorage.getItem(Constants.localStorageKey.userId) || "";
+    const custId = localStorage.getItem('customerId') || "";
     const mobile = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
     setCustomerId(custId);
     setMobileNo(mobile);
@@ -221,9 +221,10 @@ export default function Enroll() {
                 <input
                   type="number"
                   min={1}
+                  disabled={true}
+                  className={`${inputClass} opacity-60 bg-gray-400 cursor-not-allowed`}
                   value={schemeId}
                   onChange={(e) => setSchemeId(e.target.value)}
-                  className={inputClass}
                   placeholder="e.g. 1"
                 />
               </div>
@@ -234,7 +235,8 @@ export default function Enroll() {
                   min={0}
                   value={customerId}
                   onChange={(e) => setCustomerId(e.target.value)}
-                  className={inputClass}
+                  disabled={true}
+                  className={`${inputClass} opacity-60 bg-gray-400 cursor-not-allowed`}
                   placeholder="From account"
                 />
               </div>
@@ -246,7 +248,8 @@ export default function Enroll() {
                   maxLength={10}
                   value={mobileNo}
                   onChange={(e) => setMobileNo(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  className={inputClass}
+                  disabled={true}
+                  className={`${inputClass} opacity-60 bg-gray-400 cursor-not-allowed`}
                   placeholder="10-digit mobile"
                 />
               </div>

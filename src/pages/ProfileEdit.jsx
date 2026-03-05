@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { FaArrowLeft, FaUpload, FaCheckCircle } from "react-icons/fa";
-import { getCustomerKycInfo, updateCustomerBankDetails, updateCustomerKyc } from "../api/apiHelper";
+import { FaArrowLeft, FaUpload, FaCheckCircle, FaDownload } from "react-icons/fa";
+import { getCustomerDetails, getCustomerKycInfo, updateCustomerBankDetails, updateCustomerKyc } from "../api/apiHelper";
 import Constants from "../utils/constants";
 import { updatePersonalDetails } from "../store/scheme/schemesApi";
 
@@ -145,7 +145,7 @@ export default function ProfileEdit() {
   const location = useLocation();
   const dispatch = useDispatch();
   const personalDetailsState = useSelector((state) => state.scheme?.personalDetails ?? { isLoading: false, error: null });
-  // Prefill from API when getCustomerKycInfo returns (for enableReinitialize)
+  // Prefill from API when getCustomerDetails returns (for enableReinitialize)
   const [personalPrefill, setPersonalPrefill] = useState(null);
   const [kycPrefill, setKycPrefill] = useState(null);
   const [bankPrefill, setBankPrefill] = useState(null);
@@ -333,6 +333,8 @@ export default function ProfileEdit() {
   const [bankSuccess, setBankSuccess] = useState(false);
   const [bankError, setBankError] = useState("");
   const [kycBankDisplay, setKycBankDisplay] = useState(null); // { bank_details, kyc_details } from API
+  const [kycDocuments, setKycDocuments] = useState([]); // { DocumentNo, DocumentType, DocumentUrlFront }[] from GetCustomerDetails
+  const [kycDetailsLoading, setKycDetailsLoading] = useState(false); // loading when fetching on KYC tab
   const [activeTab, setActiveTab] = useState("personal"); // personal | identity | kyc | bank
 
   const tabs = [
@@ -363,7 +365,7 @@ export default function ProfileEdit() {
     if (!mobileFromAuth && !stored) setKycLoading(false);
   }, []);
 
-  // Fetch KYC/Bank details for display and prefill (mobile from localStorage so it runs after mount)
+  // Fetch customer details on profile-edit load: getCustomerKycInfo to prefill form (personal, KYC, bank)
   useEffect(() => {
     let mobile = "";
     try {
@@ -382,21 +384,19 @@ export default function ProfileEdit() {
           const cd = res.data.customer_details;
           setKycBankDisplay({ bank_details: cd.bank_details || null, kyc_details: cd.kyc_details || null });
 
-          // Personal tab: first_name, last_name, mobile_no, email, gender, dateOfBirth, address (current)
-          const addr = cd.address?.current_address || {};
-          // console.log("API KYC data:", cd.nominee_details?.nominee_name);
+          const addr = cd.address?.current_address ?? cd.address ?? {};
           const genderVal = cd.gender ? String(cd.gender).charAt(0).toUpperCase() + String(cd.gender).slice(1) : "";
           setPersonalPrefill({
             first_name: cd.first_name ?? "",
             last_name: cd.last_name ?? "",
-            mobile_no: cd.mobile_no ?? "",
-            email: cd.emailId ?? "",
+            mobile_no: cd.mobile_no ?? cd.mobileNo ?? "",
+            email: cd.emailId ?? cd.email ?? "",
             gender: genderVal || "Male",
-            dateOfBirth: cd.date_of_birth ?? "",
-            address: addr.current_street ?? "",
-            city: addr.current_city ?? "",
-            stateName: addr.current_state ?? "",
-            pincode: addr.current_pincode != null ? String(addr.current_pincode) : "",
+            dateOfBirth: cd.date_of_birth ?? cd.dateOfBirth ?? "",
+            address: addr.current_street ?? addr.street ?? "",
+            city: addr.current_city ?? addr.city ?? "",
+            stateName: addr.current_state ?? addr.state ?? "",
+            pincode: addr.current_pincode != null ? String(addr.current_pincode) : (addr.pincode != null ? String(addr.pincode) : ""),
             nominee_name: cd.nominee_details?.nominee_name ?? "",
             relation_of_nominee: cd.nominee_details?.relation_of_nominee ?? "",
             nomineeDob: cd.nominee_details?.nominee_dob ?? "",
@@ -404,7 +404,6 @@ export default function ProfileEdit() {
             nomineeContact: cd.nominee_details?.nominee_mobile_number ?? "",
           });
 
-          // KYC tab: id_proof_type, id_proof_number, id_proof_front_side, id_proof_back_side (URLs from API satisfy "already uploaded")
           const kyc = cd.kyc_details;
           if (kyc) {
             const num = kyc.id_proof_type !== undefined ? Number(kyc.id_proof_type) : 1;
@@ -418,7 +417,6 @@ export default function ProfileEdit() {
             });
           }
 
-          // Bank tab: bank_account_no (may be masked), account_holder_name, ifsc_code, name_match_percentage
           if (cd.bank_details) {
             const b = cd.bank_details;
             setBankPrefill({
@@ -434,6 +432,43 @@ export default function ProfileEdit() {
       .catch(() => {})
       .finally(() => setKycLoading(false));
   }, []);
+
+  // When user opens KYC Details tab, fetch GetCustomerDetails to get latest documents and show download
+  useEffect(() => {
+    if (activeTab !== "kyc") return;
+    let mobile = "";
+    try {
+      const stored = localStorage.getItem("profile");
+      if (stored) mobile = JSON.parse(stored).mobileNumber || "";
+      if (!mobile) mobile = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
+    } catch (_) {}
+    if (!mobile || mobile.length < 10) {
+      setKycDetailsLoading(false);
+      return;
+    }
+    setKycDetailsLoading(true);
+    getCustomerDetails({ MobileNo: mobile })
+      .then((res) => {
+        if (res && res.status === 200 && res.data?.StatusCode === 200 && Array.isArray(res.data.Data) && res.data.Data.length > 0) {
+          const docs = res.data.Data[0].Documents || [];
+          setKycDocuments(docs);
+          if (docs.length > 0) {
+            const doc = docs[0];
+            const docTypeMap = { PanCard: 1, Aadhar: 2, "Voter ID": 3, DrivingLicence: 7 };
+            const idProofTypeNum = docTypeMap[doc.DocumentType] ?? 1;
+            setIdentityProofType(doc.DocumentType || "PanCard");
+            setKycPrefill((prev) => ({
+              ...prev,
+              id_proof_type: idProofTypeNum,
+              id_proof_number: doc.DocumentNo ?? "",
+              id_proof_front_side: doc.DocumentUrlFront ?? "",
+            }));
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setKycDetailsLoading(false));
+  }, [activeTab]);
 
   const readFileAsBase64 = (file) =>
     new Promise((resolve, reject) => {
@@ -918,6 +953,9 @@ export default function ProfileEdit() {
             <h2 className={sectionTitleClass}>KYC (Know Your Customer) Details</h2>
             <p className="text-sm text-gray-500 mb-4">ID proof details for KYC creation and updation.</p>
 
+            {kycDetailsLoading ? (
+              <div className="text-gray-500 py-4">Loading customer documents...</div>
+            ) : (
             <form onSubmit={kycFormik.handleSubmit} className="space-y-4">
               <div>
                 <label className={labelClass}>Customer&apos;s Mobile Number <span className="text-red-500">*</span></label>
@@ -996,7 +1034,34 @@ export default function ProfileEdit() {
               >
                 {kycApiLoading || kycFormik.isSubmitting ? "Updating..." : "Save KYC Details"}
               </button>
+
+              {kycDocuments.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3">Uploaded documents</h3>
+                  <ul className="space-y-2">
+                    {kycDocuments
+                      .filter((doc) => doc.DocumentUrlFront)
+                      .map((doc, idx) => (
+                        <li key={idx} className="flex items-center justify-between gap-3 py-2 px-3 rounded-lg bg-gray-50 border border-gray-100">
+                          <span className="text-sm text-gray-700">
+                            {doc.DocumentType || "Document"} {doc.DocumentNo ? `(${doc.DocumentNo})` : ""}
+                          </span>
+                          <a
+                            href={doc.DocumentUrlFront}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition"
+                          >
+                            <FaDownload /> Download
+                          </a>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </form>
+            )}
           </section>
           )}
 

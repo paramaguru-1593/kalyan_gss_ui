@@ -55,6 +55,14 @@ export const GET = (url, config) =>
 export const POST = (url, data, config) =>
   instance.post(url, data, config).catch((error) => error?.response);
 
+// OTP: send OTP to mobile
+export const sendOtp = (mobile) =>
+  POST(ApiEndpoits.sendOtp, { mobile });
+
+// OTP: verify OTP for mobile
+export const verifyOtp = (mobile, otp) =>
+  POST(ApiEndpoits.verifyOtp, { mobile, otp });
+
 // Wrapper for today's store gold rate
 export const getStoreGoldRate = (payload) =>
   POST(ApiEndpoits.storeGoldRate, payload);
@@ -66,6 +74,10 @@ export const getSchemesByMobileNumber = (mobileNumber) =>
 // Get customer KYC info (includes bank_details, kyc_details) for display
 export const getCustomerKycInfo = (mobileNo) =>
   POST(ApiEndpoits.customerKycInfo, { mobile_no: mobileNo });
+
+// Get customer details by mobile (optional: DocumentType, DocumentNumber)
+export const getCustomerDetails = (payload) =>
+  POST(ApiEndpoits.getCustomerDetails, payload);
 
 // Update customer KYC (id proof type, front/back images, id proof number)
 export const updateCustomerKyc = (payload) =>

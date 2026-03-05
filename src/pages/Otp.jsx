@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import Images from "../images/images";
 import Constants from "../utils/constants";
+import { sendOtp, verifyOtp } from "../api/apiHelper";
 
 export default function Otp() {
   const navigate = useNavigate();
@@ -12,8 +13,63 @@ export default function Otp() {
 
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0); // seconds remaining; 0 = can resend
 
   const inputRefs = useRef([]);
+
+  // Countdown timer: decrement every second until 0
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const id = setInterval(() => {
+      setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [countdown]);
+
+  const startCountdown = (expiresInSeconds) => {
+    const sec = typeof expiresInSeconds === "number" && expiresInSeconds > 0
+      ? expiresInSeconds
+      : 300;
+    setCountdown(sec);
+  };
+
+  const formatTimer = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Call sendOtp once when entering OTP page after login
+  useEffect(() => {
+    if (!mobileNumber) return;
+    let cancelled = false;
+
+    (async () => {
+      setError("");
+      setInfo("");
+      try {
+        const response = await sendOtp(mobileNumber);
+        if (cancelled) return;
+        if (response?.data?.success) {
+          setInfo(response.data.message || "OTP sent successfully.");
+          startCountdown(response.data?.data?.expires_in_seconds);
+        } else if (response?.data) {
+          setError(response.data.message || "Failed to send OTP. Please try again.");
+        }
+      } catch (_e) {
+        if (!cancelled) {
+          setError("Failed to send OTP. Please try again.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNumber]);
 
   const handleOtpChange = (value, index) => {
     if (value.length > 1) {
@@ -48,33 +104,70 @@ export default function Otp() {
     }
   };
 
-  const handleLogin = () => {
+  const handleVerify = async () => {
     const otpString = otp.join("");
 
     if (otpString.length !== 4) return;
 
-    if (otpString !== "1234") {
-      alert("Invalid OTP. Use 1234 for testing.");
-      return;
-    }
+    if (!mobileNumber) return;
 
+    setError("");
+    setInfo("");
     setLoading(true);
-    if (mobileNumber) {
-      if (!localStorage.getItem(Constants.localStorageKey.userId)) {
-        localStorage.setItem(Constants.localStorageKey.userId, mobileNumber);
+    try {
+      const response = await verifyOtp(mobileNumber, otpString);
+      if (response?.data?.success) {
+        if (mobileNumber) {
+          if (!localStorage.getItem(Constants.localStorageKey.userId)) {
+            localStorage.setItem(Constants.localStorageKey.userId, mobileNumber);
+          }
+          localStorage.setItem(Constants.localStorageKey.mobileNumber, mobileNumber);
+        }
+        const kycUpdated =
+          location.state?.kycUpdated === true ||
+          (() => {
+            try {
+              return JSON.parse(localStorage.getItem(Constants.localStorageKey.kycUpdated) || "false");
+            } catch (_) {
+              return false;
+            }
+          })();
+        setInfo(response.data.message || "OTP verified successfully.");
+        setTimeout(() => {
+          navigate(kycUpdated ? "/home" : "/onboarding/personal-details", { state: { mobile: mobileNumber } });
+        }, 800);
+      } else {
+        const message =
+          response?.data?.message ||
+          (response?.data?.error === "INVALID_OTP" ? "Invalid OTP. Please try again." : "Verification failed. Please try again.");
+        setError(message);
       }
-      localStorage.setItem(Constants.localStorageKey.mobileNumber, mobileNumber);
+    } catch (e) {
+      setError(e?.message || "Verification failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    const kycUpdated = location.state?.kycUpdated === true || (() => {
-      try {
-        return JSON.parse(localStorage.getItem(Constants.localStorageKey.kycUpdated) || "false");
-      } catch (_) {
-        return false;
+  };
+
+  const handleResend = async () => {
+    if (!mobileNumber) return;
+    setError("");
+    setInfo("");
+    setOtp(["", "", "", ""]);
+    setResendLoading(true);
+    try {
+      const response = await sendOtp(mobileNumber);
+      if (response?.data?.success) {
+        setInfo(response.data.message || "OTP sent successfully.");
+        startCountdown(response.data?.data?.expires_in_seconds);
+      } else {
+        setError(response?.data?.message || "Failed to send OTP. Please try again.");
       }
-    })();
-    setTimeout(() => {
-      navigate(kycUpdated ? "/home" : "/user-details", { state: { mobile: mobileNumber } });
-    }, 800);
+    } catch (e) {
+      setError(e?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   const otpString = otp.join("");
@@ -108,6 +201,16 @@ export default function Otp() {
 
         {/* Card */}
         <div className="bg-amber-50 rounded-xl p-5 shadow-md">
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+          {info && (
+            <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+              {info}
+            </div>
+          )}
           {/* Mobile number */}
           <div className="mb-6">
             <label className="block font-semibold text-gray-800 mb-2">
@@ -157,7 +260,7 @@ export default function Otp() {
 
           {/* Button */}
           <button
-            onClick={handleLogin}
+            onClick={handleVerify}
             disabled={
               otpString.length !== 4 || loading
             }
@@ -170,7 +273,24 @@ export default function Otp() {
           >
             {loading
               ? "Verifying..."
-              : "Sign in / Register"}
+              : "Verify OTP"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendLoading || !mobileNumber || countdown > 0}
+            className={`w-full h-10 mt-3 rounded-xl font-semibold border text-sm transition ${
+              countdown > 0 || resendLoading || !mobileNumber
+                ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                : "border-red-700 text-red-700 bg-white"
+            }`}
+          >
+            {resendLoading
+              ? "Resending..."
+              : countdown > 0
+                ? `Resend OTP (${formatTimer(countdown)})`
+                : "Resend OTP"}
           </button>
 
           {/* Helper */}

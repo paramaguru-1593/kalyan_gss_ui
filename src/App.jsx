@@ -16,6 +16,9 @@ import Bond from "./pages/Bond";
 import UserDetails from "./pages/UserDetails";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
+import PersonalDetailsStep from "./pages/onboarding/PersonalDetailsStep";
+import KycDetailsStep from "./pages/onboarding/KycDetailsStep";
+import BankDetailsStep from "./pages/onboarding/BankDetailsStep";
 
 export default function App() {
   return (
@@ -25,6 +28,11 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/otp" element={<Otp />} />
         <Route path="/user-details" element={<UserDetails />} />
+
+        {/* Onboarding flow after OTP: Personal → KYC → Bank → Home */}
+        <Route path="/onboarding/personal-details" element={<PersonalDetailsStep />} />
+        <Route path="/onboarding/kyc-details" element={<KycDetailsStep />} />
+        <Route path="/onboarding/bank-details" element={<BankDetailsStep />} />
 
         {/* Main app - shared header on all these pages */}
         <Route element={<Layout />}>

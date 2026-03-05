@@ -1,6 +1,9 @@
 const ApiEndpoits = {
     login: "/v1/login",
     logout: "/v1/logout",
+    // otp
+    sendOtp: "/v1/otp/send",
+    verifyOtp: "/v1/otp/verify",
     // gold rate
     storeGoldRate: "/getstoregoldrate",
     // schemes endpoints
@@ -13,6 +16,7 @@ const ApiEndpoits = {
     // externals
     getSchemesByMobileNumber: "/externals/getSchemesByMobileNumber",
     customerKycInfo: "/customerkycinfo",
+    getCustomerDetails: "/customer/GetCustomerDetails",
     customerKycUpdation: "/customerkycupdation",
     customerBankDetailUpdation: "/customerbankdetail_updation",
     updatePersonalDetails: "/update-personal-details",

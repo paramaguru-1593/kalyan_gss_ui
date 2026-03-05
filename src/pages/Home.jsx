@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -118,9 +118,9 @@ function RecommendCard({ item, index, onEnroll }) {
         <div className="space-y-2 mb-4">
           {ROW_FIELDS.map((field) => (
             <div key={field.key} className="flex justify-between items-center text-[13px]">
-              <span className="text-gray-500 font-medium flex items-center gap-1.5">
+              {/* <span className="text-gray-500 font-medium flex items-center gap-1.5">
                 {field.icon} {field.label}
-              </span>
+              </span> */}
               <span className={`font-bold ${t.accent}`}>
                 {field.key === "monthlyAmount" ? `₹${Number(item[field.key]).toLocaleString()}` : `${item[field.key]}${field.suffix || ""}`}
               </span>
@@ -212,6 +212,7 @@ export default function Home() {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const location = useLocation();
 
   const schemesState = useSelector((state) => state.scheme?.schemes ?? { data: [], isLoading: false, error: null });
   const customerSchemesState = useSelector(
@@ -234,20 +235,7 @@ export default function Home() {
     }
   }, [dispatch, schemesState.data]);
 
-  // Load customer schemes (getSchemesByMobileNumber via Redux) and getProfileCompleteness.
-  useEffect(() => {
-    isMounted.current = true;
     const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
-    if (!mobileNumber) {
-      setCurrentSchemes([]);
-      setProfileData(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
 
     const fetchAll = async () => {
       try {
@@ -281,6 +269,37 @@ export default function Home() {
         if (isMounted.current) setLoading(false);
       }
     };
+    
+  useEffect(() => {
+    console.log(location,'location.state');
+    
+    if (location.state?.isFrom === "enrollment") {
+      alert(89);
+      dispatch(fetchCustomerSchemesByMobile({ mobileNumber }));
+
+      // Clear state immediately after handling
+      navigate(location.pathname, {
+        replace: true,
+        state: {}
+      });
+    }
+  }, [location.state]);
+
+  // Load customer schemes (getSchemesByMobileNumber via Redux) and getProfileCompleteness.
+  useEffect(() => {
+    isMounted.current = true;
+    const mobileNumber = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
+    if (!mobileNumber) {
+      setCurrentSchemes([]);
+      setProfileData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
 
     fetchAll();
     return () => {
