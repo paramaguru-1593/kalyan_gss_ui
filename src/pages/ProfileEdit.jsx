@@ -7,6 +7,7 @@ import { FaArrowLeft, FaUpload, FaCheckCircle, FaDownload } from "react-icons/fa
 import { getCustomerDetails, getCustomerKycInfo, updateCustomerBankDetails, updateCustomerKyc } from "../api/apiHelper";
 import Constants from "../utils/constants";
 import { updatePersonalDetails } from "../store/scheme/schemesApi";
+import DatePickerField from "../components/DatePickerField";
 
 const inputClass =
   "w-full h-12 px-4 rounded-lg border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all";
@@ -573,16 +574,6 @@ export default function ProfileEdit() {
     }, 800);
   };
 
-  const dateInputValue = (() => {
-    const d = personalFormik.values.dateOfBirth;
-    if (!d) return "";
-    if (d.includes("/")) {
-      const [day, m, y] = d.split("/");
-      return y && m && day ? `${y}-${m.padStart(2, "0")}-${day.padStart(2, "0")}` : d;
-    }
-    return d;
-  })();
-
   return (
     <div className="flex flex-col">
       {/* Top bar - full width */}
@@ -673,17 +664,13 @@ export default function ProfileEdit() {
                 </div>
                 <div>
                   <label className={labelClass}>Date of Birth</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      name="dateOfBirth"
-                      value={dateInputValue}
-                      onChange={(e) => personalFormik.setFieldValue("dateOfBirth", e.target.value)}
-                      onBlur={personalFormik.handleBlur}
-                      className={`${inputClass} pr-10`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">📅</span>
-                  </div>
+                  <DatePickerField
+                    value={personalFormik.values.dateOfBirth || null}
+                    onChange={(v) => personalFormik.setFieldValue("dateOfBirth", v ?? "")}
+                    onBlur={personalFormik.handleBlur}
+                    className={inputClass}
+                    style={{ width: "100%" }}
+                  />
                 </div>
                 <div>
                   <label className={labelClass}>Gender</label>
@@ -827,13 +814,12 @@ export default function ProfileEdit() {
                 </div>
                 <div>
                   <label className={labelClass}>Nominee Date of Birth</label>
-                  <input
-                    type="date"
-                    name="nomineeDob"
-                    value={personalFormik.values.nomineeDob}
-                    onChange={personalFormik.handleChange}
+                  <DatePickerField
+                    value={personalFormik.values.nomineeDob || null}
+                    onChange={(v) => personalFormik.setFieldValue("nomineeDob", v ?? "")}
                     onBlur={personalFormik.handleBlur}
                     className={inputClass}
+                    style={{ width: "100%" }}
                   />
                 </div>
                 <div>

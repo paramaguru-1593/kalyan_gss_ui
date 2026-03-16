@@ -9,6 +9,7 @@ import { updatePersonalDetails } from "../../store/scheme/schemesApi";
 import OnboardingLayout from "../../components/onboarding/OnboardingLayout";
 import FormFooterButtons from "../../components/onboarding/FormFooterButtons";
 import { getInitialPersonalValues } from "./onboardingFormUtils";
+import DatePickerField from "../../components/DatePickerField";
 
 const inputClass =
   "w-full h-12 px-4 rounded-lg border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all";
@@ -143,16 +144,6 @@ export default function PersonalDetailsStep() {
       .finally(() => setLoading(false));
   }, []);
 
-  const dateInputValue = (() => {
-    const d = formik.values.dateOfBirth;
-    if (!d) return "";
-    if (d.includes("/")) {
-      const [day, m, y] = d.split("/");
-      return y && m && day ? `${y}-${m.padStart(2, "0")}-${day.padStart(2, "0")}` : d;
-    }
-    return d;
-  })();
-
   const handleSkip = () => {
     navigate("/onboarding/kyc-details", { replace: true });
   };
@@ -198,13 +189,12 @@ export default function PersonalDetailsStep() {
           </div>
           <div>
             <label className={labelClass}>Date of Birth</label>
-            <input
-              type="date"
-              name="dateOfBirth"
-              value={dateInputValue}
-              onChange={(e) => formik.setFieldValue("dateOfBirth", e.target.value)}
+            <DatePickerField
+              value={formik.values.dateOfBirth || null}
+              onChange={(v) => formik.setFieldValue("dateOfBirth", v ?? "")}
               onBlur={formik.handleBlur}
               className={inputClass}
+              style={{ width: "100%" }}
             />
           </div>
           <div>
@@ -346,13 +336,12 @@ export default function PersonalDetailsStep() {
           </div>
           <div>
             <label className={labelClass}>Nominee Date of Birth</label>
-            <input
-              type="date"
-              name="nomineeDob"
-              value={formik.values.nomineeDob}
-              onChange={formik.handleChange}
+            <DatePickerField
+              value={formik.values.nomineeDob || null}
+              onChange={(v) => formik.setFieldValue("nomineeDob", v ?? "")}
               onBlur={formik.handleBlur}
               className={inputClass}
+              style={{ width: "100%" }}
             />
           </div>
           <div>

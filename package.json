@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
+    "antd": "^5.22.6",
     "axios": "^1.13.5",
+    "dayjs": "^1.11.13",
     "formik": "^2.4.9",
     "framer-motion": "^11.0.0",
     "react": "^18.2.0",

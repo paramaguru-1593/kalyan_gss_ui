@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaUpload } from "react-icons/fa";
+import DatePickerField from "../components/DatePickerField";
 
 export default function PersonalInfo() {
   const navigate = useNavigate();
@@ -111,13 +112,11 @@ export default function PersonalInfo() {
 
             {/* DOB */}
             <div className="md:col-span-1">
-                <input
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) =>
-                    setDateOfBirth(e.target.value)
-                }
-                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition"
+                <DatePickerField
+                  value={dateOfBirth || null}
+                  onChange={(v) => setDateOfBirth(v ?? "")}
+                  className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none transition"
+                  style={{ width: "100%" }}
                 />
             </div>
 
