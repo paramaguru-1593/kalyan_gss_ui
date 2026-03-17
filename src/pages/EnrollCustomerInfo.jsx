@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaCheckCircle } from "react-icons/fa";
-import { GET } from "../api/apiHelper";
+import axios from "axios";
+import { GET, POST } from "../api/apiHelper";
 import ApiEndpoints from "../api/apiEndPoints";
 
 /** @typedef {{ paymentAccepted?: boolean; paymentAcceptedMonth?: string | null; acceptanceReason?: string }} PaymentInfo */
@@ -82,10 +83,6 @@ export default function EnrollCustomerInfo() {
   }, [accountNo]);
 
   const handlePayAndRegister = async () => {
-    if (!email.trim()) {
-      setError("Email is required for payment. Update it in Profile if needed.");
-      return;
-    }
     if (!accountNo) {
       setError("Account number is missing. Please complete enrollment first.");
       return;
@@ -93,40 +90,24 @@ export default function EnrollCustomerInfo() {
     setError("");
     setLoading(true);
 
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const transId = `TXN${Date.now()}${Math.random().toString(36).slice(2, 9)}`;
-    const amountStr = String(emiAmount || "0");
-    const channel = "Web";
-
-    const params = {
-      Date: dateStr,
-      enrNo: String(accountNo),
-      amount: amountStr,
-      transId,
-      email: email.trim(),
-      channel,
-    };
-
-    const response = await GET(ApiEndpoints.confirmPayment, { params });
-    setLoading(false);
-
-    const isSuccess =
-      response?.status === 200 &&
-      response?.data?.data != null &&
-      response?.data?.error?.status !== 400;
-    if (isSuccess) {
-      const data = response.data.data;
-      const receiptId = (Array.isArray(data) ? data[0] : data)?.ReceiptID;
-      setPaymentSuccess({
-        receiptId: receiptId ?? transId,
-        message: response?.data?.error?.message || "Payment confirmed successfully.",
+    try {
+      const res = await POST(ApiEndpoints.paymentRequest, {
+        scheme_enrollment_id: accountNo,
+        // amount: emiAmount,
+        amount: 1,
+        mobile: mobileNo,
       });
-    } else {
-      const errMsg =
-        response?.data?.error?.message ||
-        response?.data?.error?.description ||
-        "Payment confirmation failed. Please try again.";
-      setError(errMsg);
+      console.log(res,'paymentres');
+
+      if (res?.data?.redirect_url) {
+        window.location.href = res.data.redirect_url;
+      } else {
+        setError("Payment request failed. Please try again.");
+      }
+    } catch (e) {
+      setError("Payment request failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 

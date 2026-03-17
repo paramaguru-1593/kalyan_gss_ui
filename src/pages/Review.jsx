@@ -33,7 +33,6 @@ export default function Review() {
   const [modeOfPay, setModeOfPay] = useState("Online");
   const [paymentGateway, setPaymentGateway] = useState("");
   const [showProcessing, setShowProcessing] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const schemeType = params.schemeType || "DHAN SAMRIDDHI";
   const userId = params.userId || "";
@@ -83,7 +82,36 @@ export default function Review() {
 
     setTimeout(() => {
       setShowProcessing(false);
-      setShowSuccess(true);
+      const receipt = {
+        schemeType,
+        customerId,
+        enrollmentId,
+        monthOfEmi,
+        amount: amountPaid,
+        transactionRef,
+        transactionStatus: "Successful Transaction",
+        fullName: personalData.fullName,
+        mobileNumber: personalData.mobileNumber,
+        emailAddress: personalData.emailAddress,
+        modeOfPay,
+        paymentGateway,
+        joinDate: new Date().toISOString(),
+        userId,
+      };
+
+      try {
+        localStorage.setItem("lastPaymentReceipt", JSON.stringify(receipt));
+      } catch (_) {}
+
+      // Keep transaction history updated
+      try {
+        const stored = localStorage.getItem("transactions");
+        const current = stored ? JSON.parse(stored) : [];
+        const next = Array.isArray(current) ? [receipt, ...current] : [receipt];
+        localStorage.setItem("transactions", JSON.stringify(next));
+      } catch (_) {}
+
+      navigate("/payment-success", { state: { receipt }, replace: true });
     }, 2000);
   };
 
@@ -176,48 +204,6 @@ export default function Review() {
           <div className="bg-white p-6 rounded-xl text-center">
             <FaCheckCircle className="text-4xl text-amber-500 mx-auto mb-4" />
             <p className="font-semibold">Processing Payment...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Success: Review flow → Bond (receipt) or Home */}
-      {showSuccess && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center">
-            <FaCheckCircle className="text-green-600 text-4xl mx-auto mb-4" />
-            <h3 className="font-semibold text-lg">
-              Payment Successful
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">Confirm details → Make payment ✓</p>
-
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                onClick={() =>
-                  navigate("/bond", {
-                    state: {
-                      schemeType,
-                      customerId,
-                      enrollmentId,
-                      monthOfEmi,
-                      amount: amountPaid,
-                      transactionRef,
-                      fullName: personalData.fullName,
-                      mobileNumber: personalData.mobileNumber,
-                      emailAddress: personalData.emailAddress,
-                    },
-                  })
-                }
-                className="w-full bg-amber-600 text-white py-3 rounded-lg font-semibold hover:bg-amber-700"
-              >
-                View receipt (Bond)
-              </button>
-              <button
-                onClick={() => navigate("/home")}
-                className="w-full border border-gray-300 py-3 rounded-lg font-medium hover:bg-gray-50"
-              >
-                Home
-              </button>
-            </div>
           </div>
         </div>
       )}

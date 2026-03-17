@@ -13,6 +13,7 @@ import ProfileEdit from "./pages/ProfileEdit";
 import SchemeDetails from "./pages/SchemeDetails";
 import Review from "./pages/Review";
 import Bond from "./pages/Bond";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import UserDetails from "./pages/UserDetails";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
@@ -50,6 +51,9 @@ export default function App() {
         <Route path="/personal-info" element={<PersonalInfo />} />
         <Route path="/review" element={<Review />} />
         <Route path="/bond" element={<Bond />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        {/* Payment gateway callback URL */}
+        <Route path="/payment-result" element={<PaymentSuccess />} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
