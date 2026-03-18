@@ -98,3 +98,10 @@ export const getProfileCompleteness = (mobileNumber) =>
 // Get customer ledger report by enrollment number
 export const getCustomerLedgerReport = (enrollmentNo) =>
   GET(ApiEndpoits.getCustomerLedgerReport, { params: { EnrollmentNo: enrollmentNo } });
+
+// Transaction history (by customerId)
+export const getTransactionHistory = ({ customerId, limit } = {}) =>
+  POST(`${ApiEndpoits.transactionHistory}`, {
+    customerId,
+    ...(limit ? { limit } : {}),
+  });

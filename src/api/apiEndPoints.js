@@ -24,7 +24,10 @@ const ApiEndpoits = {
     profileCompleteness: "/profile-completeness",
     // customer ledger report (by enrollment no)
     getCustomerLedgerReport: "/externals/getCustomerLedgerReport",
-    paymentRequest: "/payment/request"
+    paymentRequest: "/payment/request",
+    paymentDetails: "/v1/payment/response-details",
+    receiptByReference: "/v1/payment/receipt-by-reference",
+    transactionHistory: "/v1/payment/transactions",
 }
 
 export default ApiEndpoits;

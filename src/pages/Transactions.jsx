@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+import { getTransactionHistory } from "../api/apiHelper";
 
 const SAMPLE_TRANSACTIONS = [
   {
@@ -25,25 +26,76 @@ const SAMPLE_TRANSACTIONS = [
 
 export default function Transactions() {
   const navigate = useNavigate();
+  const location = useLocation();
   const userId = location.state?.userId;
+  const customerId =
+    location.state?.customerId ??
+    location.state?.customer_id ??
+    localStorage.getItem("customerId") ??
+    localStorage.getItem("customer_id") ??
+    "";
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
 
-    // Get transactions from localStorage
-    const stored = localStorage.getItem("transactions");
-    if (stored) {
-      setTransactions(JSON.parse(stored));
-    } else {
-      // show sample transactions when none are stored so UI matches designs
-      setTransactions(SAMPLE_TRANSACTIONS);
+    async function load() {
+      setError("");
+      setLoading(true);
+
+      try {
+        if (!customerId) {
+          // Fallback for dev/demo if customerId isn't available yet.
+          const stored = localStorage.getItem("transactions");
+          if (stored) setTransactions(JSON.parse(stored));
+          else setTransactions(SAMPLE_TRANSACTIONS);
+          return;
+        }
+
+        const res = await getTransactionHistory({
+          customerId: customerId,
+          limit: 50
+        });
+        const apiRows = res?.data?.data;
+
+        if (res?.data?.success === true && Array.isArray(apiRows)) {
+          const mapped = apiRows.map((row) => ({
+            schemeType: row.scheme ?? "-",
+            modeOfPay: "Online",
+            paymentGateway: row.paymentGateway ?? "",
+            joinDate: row.paymentDate ?? null,
+            enrollmentId: row.enrollmentNo ?? "-",
+            transactionRef: row.receiptId ?? "-",
+            amount: row.amount ?? "0",
+            transactionStatus: row.statusLabel ?? row.status ?? "Completed",
+            paymentDate: row.paymentDate ?? null,
+            customerId,
+            paymentId: row.paymentId,
+            billdeskReference: row.billdeskReference,
+          }));
+
+          if (!cancelled) setTransactions(mapped);
+        } else {
+          throw new Error(res?.data?.message || "Failed to load transactions.");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError("Unable to fetch transactions right now. Please try again.");
+          setTransactions([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    setLoading(false);
-  }, []);
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
 
   const handleViewReceipt = (tx) => {
     navigate("/bond", {
@@ -56,6 +108,21 @@ export default function Transactions() {
       return (
         <div className="flex justify-center mt-10">
           <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center shadow-sm">
+          <h3 className="font-semibold text-lg text-red-800">Something went wrong</h3>
+          <p className="text-sm text-red-700 mt-2">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 border border-red-500 text-red-700 rounded-full font-semibold"
+          >
+            Retry
+          </button>
         </div>
       );
     }
