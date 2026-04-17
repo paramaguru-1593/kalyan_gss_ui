@@ -99,6 +99,10 @@ export const getProfileCompleteness = (mobileNumber) =>
 export const getCustomerLedgerReport = (enrollmentNo) =>
   GET(ApiEndpoits.getCustomerLedgerReport, { params: { EnrollmentNo: enrollmentNo } });
 
+// Get pincode details (state/city lookup)
+export const getPincodeDetails = (pincode) =>
+  POST(ApiEndpoits.getPincodeDetails, { pincode: String(pincode ?? "") });
+
 // Transaction history (by customerId)
 export const getTransactionHistory = ({ customerId, limit } = {}) =>
   POST(`${ApiEndpoits.transactionHistory}`, {

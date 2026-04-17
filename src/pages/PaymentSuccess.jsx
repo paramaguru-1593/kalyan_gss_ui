@@ -85,6 +85,11 @@ export default function PaymentSuccess() {
   const amount = receipt?.amount;
   const transactionRef = receipt?.transactionRef || "-";
   const statusFromQuery = searchParams.get("status");
+  const normalizedStatus = String(statusFromQuery || receipt?.status || receipt?.transactionStatus || "")
+    .trim()
+    .toLowerCase();
+  const isFailedPayment = normalizedStatus === "failed" || normalizedStatus === "failure";
+  const isSuccessPayment = !isFailedPayment;
   const transactionStatus =
     (statusFromQuery && statusFromQuery.toUpperCase()) ||
     receipt?.transactionStatus ||
@@ -110,13 +115,36 @@ export default function PaymentSuccess() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <div className="flex-1 flex items-start justify-center px-4 py-8">
-        <div className="w-full max-w-md border border-gray-300 rounded-md shadow-sm">
-          <div className="px-4 py-3 border-b text-center">
-            <h1 className="text-lg font-semibold text-gray-800">Gold Scheme Payment</h1>
+    <div className="min-h-screen bg-[#f4f4f4] flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-sm rounded-3xl bg-white border border-gray-200 shadow-sm p-5">
+        <div className="flex flex-col items-center text-center">
+          <div
+            className={`w-14 h-14 rounded-full flex items-center justify-center ${
+              isFailedPayment ? "bg-red-500" : "bg-emerald-500"
+            }`}
+            aria-hidden="true"
+          >
+            {isFailedPayment ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M7 7L17 17M17 7L7 17" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M6 12.5L10 16.5L18 8.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
           </div>
+          <h1 className="mt-4 text-2xl font-semibold text-gray-800">
+            {isFailedPayment ? "Payment Failed" : "Payment Successful"}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {isFailedPayment
+              ? "Your payment could not be completed."
+              : "Your payment for the scheme has been completed successfully."}
+          </p>
+        </div>
 
+        <div className="mt-5 border border-gray-200 rounded-xl overflow-hidden bg-white">
           <div className="p-4">
             {loading && (
               <div className="text-center text-sm text-gray-600 py-4">
@@ -152,20 +180,26 @@ export default function PaymentSuccess() {
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-            <button type="button" onClick={goHome} className="text-blue-600 hover:underline">
-              Home
-            </button>
+        <div className="mt-5 space-y-3">
+          {isSuccessPayment && (
             <button
               type="button"
               onClick={goBond}
               disabled={loading || !receipt?.transactionRef}
-              className="text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-11 rounded-lg bg-[#151b2f] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Bond
             </button>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={goHome}
+            className="w-full h-11 rounded-lg border border-gray-300 text-gray-700 font-medium bg-white"
+          >
+            Home
+          </button>
         </div>
       </div>
     </div>

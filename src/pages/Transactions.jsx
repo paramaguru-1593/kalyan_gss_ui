@@ -158,7 +158,7 @@ export default function Transactions() {
         tx.modeOfPay === "Online" && tx.paymentGateway
           ? `ONLINE - ${tx.paymentGateway}`
           : tx.modeOfPay;
-
+      if(tx.transactionStatus !== "PENDING"){
       return (
         <div
           key={index}
@@ -177,10 +177,10 @@ export default function Transactions() {
             </div>
 
             <div className="text-right">
-              <p className="font-semibold text-green-600 text-lg md:text-xl">
+              <p className={`font-semibold ${tx.transactionStatus === 'SUCCESS' ? "text-green-600" : "text-red-600"} text-lg md:text-xl`}>
                 ₹{Number(tx.amount).toLocaleString("en-IN")}
               </p>
-              <p className="text-xs text-green-700">Completed</p>
+              <p className={`text-xs ${tx.transactionStatus === 'SUCCESS' ? "text-green-700" : "text-red-700"}`}>{tx.transactionStatus === 'SUCCESS' ? "Completed" : "Failed"}</p>
             </div>
           </div>
 
@@ -202,6 +202,7 @@ export default function Transactions() {
           </div>
         </div>
       );
+      }
     });
   };
 

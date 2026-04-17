@@ -24,6 +24,7 @@ const ApiEndpoits = {
     profileCompleteness: "/profile-completeness",
     // customer ledger report (by enrollment no)
     getCustomerLedgerReport: "/externals/getCustomerLedgerReport",
+    getPincodeDetails: "/externals/get-pincode-details",
     paymentRequest: "/payment/request",
     paymentDetails: "/v1/payment/response-details",
     receiptByReference: "/v1/payment/receipt-by-reference",

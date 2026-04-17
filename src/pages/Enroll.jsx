@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { POST } from "../api/apiHelper";
+import { POST, getCustomerKycInfo } from "../api/apiHelper";
 import ApiEndpoints from "../api/apiEndPoints";
 import Constants from "../utils/constants";
 
@@ -45,6 +45,7 @@ export default function Enroll() {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const prefillNomineeRef = useRef(false);
 
   const schemeName = state.schemeName || "Scheme";
 
@@ -63,6 +64,126 @@ export default function Enroll() {
       setEmiAmount(Number(state.defaultEmi));
     }
   }, [state.schemeId, state.tenure, state.defaultEmi]);
+
+  useEffect(() => {
+    if (prefillNomineeRef.current) return;
+    if (!mobileNo || mobileNo.length !== 10) return;
+
+    getCustomerKycInfo(mobileNo)
+      .then((res) => {
+        const cd = res?.data?.customer_details;
+        if (!cd) return;
+        prefillNomineeRef.current = true;
+
+        const nd = cd?.nominee_details || {};
+
+        const relRaw = nd?.relation_of_nominee ?? nd?.nominee_relation ?? nd?.relation ?? "";
+        const relNorm = typeof relRaw === "string" ? relRaw.trim() : "";
+        const nomineeRel = NOMINEE_RELATIONS.find(
+          (r) => r.toLowerCase() === relNorm.toLowerCase()
+        ) || "";
+
+        // Name mapping
+        const nf = (nd?.nominee_first_name ?? "").toString().trim();
+        const nl = (nd?.nominee_last_name ?? "").toString().trim();
+        const fullNomineeName = (nd?.nominee_name ?? "").toString().trim();
+        const parsedFullNameParts = fullNomineeName ? fullNomineeName.split(/\s+/).filter(Boolean) : [];
+        const parsedFirst = parsedFullNameParts[0] ?? "";
+        const parsedLast = parsedFullNameParts.slice(1).join(" ");
+
+        if (nf || nl) {
+          setNomineeFirstName((prev) => (prev.trim() ? prev : nf));
+          setNomineeLastName((prev) => (prev.trim() ? prev : nl));
+        } else if (fullNomineeName) {
+          setNomineeFirstName((prev) => (prev.trim() ? prev : parsedFirst));
+          setNomineeLastName((prev) => (prev.trim() ? prev : parsedLast));
+        }
+
+        const nomineeMobileVal = (nd?.nominee_mobile_number ?? nd?.nominee_mobile_no ?? nd?.nominee_contact ?? "")
+          .toString()
+          .trim();
+        setNomineeMobileNo((prev) => (prev.trim() ? prev : nomineeMobileVal));
+        setNomineeRelation((prev) => (prev.trim() ? prev : nomineeRel));
+
+        // Address mapping: handle object-based addresses and also do a light best-effort parse for strings.
+        const addr = nd?.nominee_address ?? {};
+        const addrObj =
+          typeof addr === "object" && addr !== null
+            ? addr.current_address ?? addr.address ?? addr
+            : null;
+
+        const pincodeCandidate =
+          nd?.nominee_pincode_id ??
+          nd?.nominee_pincode ??
+          nd?.pincode ??
+          addrObj?.current_pincode ??
+          addrObj?.pincode ??
+          "";
+        const stateCandidate =
+          nd?.nominee_state ??
+          addrObj?.current_state ??
+          addrObj?.state ??
+          "";
+        const districtCandidate =
+          nd?.nominee_district ??
+          addrObj?.current_district ??
+          addrObj?.district ??
+          "";
+        const cityCandidate =
+          nd?.nominee_city ??
+          addrObj?.current_city ??
+          addrObj?.city ??
+          "";
+        const streetCandidate =
+          nd?.nominee_street ??
+          addrObj?.current_street ??
+          addrObj?.street ??
+          "";
+        const houseCandidate =
+          nd?.nominee_house_no ??
+          addrObj?.current_house_no ??
+          addrObj?.house_no ??
+          addrObj?.houseNo ??
+          "";
+
+        if (typeof addrObj === "object" && addrObj !== null) {
+          setNomineePincodeId((prev) => (prev.trim() ? prev : pincodeCandidate != null ? String(pincodeCandidate) : ""));
+          setNomineeState((prev) => (prev.trim() ? prev : stateCandidate != null ? String(stateCandidate) : ""));
+          setNomineeDistrict((prev) => (prev.trim() ? prev : districtCandidate != null ? String(districtCandidate) : ""));
+          setNomineeCity((prev) => (prev.trim() ? prev : cityCandidate != null ? String(cityCandidate) : ""));
+          setNomineeStreet((prev) => (prev.trim() ? prev : streetCandidate != null ? String(streetCandidate) : ""));
+          setNomineeHouseNo((prev) => (prev.trim() ? prev : houseCandidate != null ? String(houseCandidate) : ""));
+          return;
+        }
+
+        if (typeof addr === "string" && addr.trim()) {
+          const raw = addr.trim();
+          const pinMatch = raw.match(/\b(\d{6})\b/);
+          if (pinMatch?.[1]) setNomineePincodeId((prev) => (prev.trim() ? prev : pinMatch[1]));
+
+          const parts = raw
+            .replace(/\s+/g, " ")
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean);
+
+          // Best-effort guess: [street/house, city, district, state, ...]
+          if (parts[0]) {
+            setNomineeStreet((prev) => (prev.trim() ? prev : parts[0]));
+            // Try extracting a house/flat number from the street line.
+            const houseMatch = parts[0].match(/\b(\d+[A-Za-z0-9/-]*)\b/);
+            if (houseMatch?.[1]) {
+              setNomineeHouseNo((prev) => (prev.trim() ? prev : houseMatch[1]));
+            }
+          }
+          if (parts[1]) setNomineeCity((prev) => (prev.trim() ? prev : parts[1]));
+          if (parts[2]) setNomineeDistrict((prev) => (prev.trim() ? prev : parts[2]));
+          if (parts[3]) setNomineeState((prev) => (prev.trim() ? prev : parts[3]));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {});
+  }, [mobileNo]);
 
   const handleNomineeMobileChange = (e) => {
     const v = e.target.value.replace(/\D/g, "").slice(0, 10);
