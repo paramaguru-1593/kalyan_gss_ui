@@ -160,6 +160,7 @@ function LiveGoldRate() {
       };
 
       const res = await getStoreGoldRate(payload);
+      // console.log(res,'nisisdhig')
       if (res && (res.status === 200 || res.status === 201)) {
         setData(res.data);
       } else {
@@ -187,8 +188,8 @@ function LiveGoldRate() {
         <span className="md:text-sm md:font-medium md:text-red-500">{error}</span>
       ) : data ? (
         <>
-          <span className="md:text-xl md:font-bold md:text-amber-600">₹{Number(data.NetRate).toLocaleString()}/gm</span>
-          <span className="hidden md:inline text-gray-400 text-xs ml-2">({data.Purity})</span>
+          <span className="md:text-xl md:font-bold md:text-amber-600">₹{Number(data?.data?.gold_rate).toLocaleString()}/gm</span>
+          {/* <span className="hidden md:inline text-gray-400 text-xs ml-2">({data.Purity})</span> */}
         </>
       ) : (
         <span className="md:text-sm md:font-medium md:text-gray-600">—</span>

@@ -94,10 +94,13 @@ function getInitialKycValues() {
 }
 
 function getInitialBankValues() {
+  
   try {
     const m = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
     const s = localStorage.getItem("profile");
     const d = s ? JSON.parse(s) : {};
+  
+
     return {
       mobile_no: d.mobileNumber || m || "",
       bank_account_no: "",
@@ -383,6 +386,8 @@ export default function ProfileEdit() {
       .then((res) => {
         if (res && res.status === 200 && res.data?.customer_details) {
           const cd = res.data.customer_details;
+          const bd = res.data.bank_details;
+
           setKycBankDisplay({ bank_details: cd.bank_details || null, kyc_details: cd.kyc_details || null });
 
           const addr = cd.address?.current_address ?? cd.address ?? {};
@@ -405,7 +410,7 @@ export default function ProfileEdit() {
             nomineeContact: cd.nominee_details?.nominee_mobile_number ?? "",
           });
 
-          const kyc = cd.kyc_details;
+          const kyc = res?.data?.kyc_details;
           if (kyc) {
             const num = kyc.id_proof_type !== undefined ? Number(kyc.id_proof_type) : 1;
             const map = { 1: "PAN", 2: "Aadhar", 3: "Voter ID", 7: "Driving Licence" };
@@ -417,9 +422,9 @@ export default function ProfileEdit() {
               id_proof_back_side: kyc.id_proof_back_side ?? "",
             });
           }
-
-          if (cd.bank_details) {
-            const b = cd.bank_details;
+          
+          if (res.data.bank_details) {
+            const b = res.data.bank_details;
             setBankPrefill({
               bank_account_no: b.bank_account_no ?? "",
               account_holder_name: b.account_holder_name ?? "",
