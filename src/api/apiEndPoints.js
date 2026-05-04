@@ -5,13 +5,14 @@ const ApiEndpoits = {
     sendOtp: "/v1/otp/send",
     verifyOtp: "/v1/otp/verify",
     // gold rate
-    storeGoldRate: "/getstoregoldrate",
+    storeGoldRate: "/v2/getstoregoldrate",
     // schemes endpoints
     storeBasedSchemeData: "/v2/storebasedscheme_data",
     // terms and conditions for a scheme (backend route is GET /externals/gettermsandcondition)
     getTermsAndCondition: "/externals/gettermsandcondition",
-    enrollNew: "/enroll_new",
-    getPaymentInformation: "/Enrollment_tbs/getPaymentInformation",
+    enrollNew: "/v2/enroll_new",
+    getPaymentInformation: "/v2/getPaymentInformation",
+    getAccountInformation: "/v2/getAccountInformation",
     confirmPayment: "/Collection_tbs/confirmPayment",
     // externals
     getSchemesByMobileNumber: "/v2/getSchemesByMobileNumber",
@@ -24,11 +25,12 @@ const ApiEndpoits = {
     profileCompleteness: "/profile-completeness",
     // customer ledger report (by enrollment no)
     getCustomerLedgerReport: "/v2/getCustomerLedgerReport",
-    getPincodeDetails: "/externals/get-pincode-details",
+    getPincodeDetails: "/v2/get-pincode-details",
     paymentRequest: "/payment/request",
     paymentDetails: "/v1/payment/response-details",
     receiptByReference: "/v1/payment/receipt-by-reference",
     transactionHistory: "/v1/payment/transactions",
+    nomineeDetails: "/v2/nomineedetails",
 }
 
 export default ApiEndpoits;

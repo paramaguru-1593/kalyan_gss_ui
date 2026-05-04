@@ -76,6 +76,7 @@ const CARD_THEMES = [
 /* Row field definitions */
 const ROW_FIELDS = [
   { key: "tenureStr", label: "Tenure", icon: "📜", suffix: " months" },
+  { key: "monthlyEmiPerMonth", label: "Monthly EMI (per month)", icon: "📅", isCurrency: true },
   { key: "optedAmount", label: "Monthly Instalment", icon: "💳", isCurrency: true },
   { key: "membershipFee", label: "Membership Fee", icon: "👥", isCurrency: true },
   { key: "firstInstallment", label: "1st Installment", icon: "💰", isCurrency: true },
@@ -88,17 +89,24 @@ const formatCurrency = (val) => {
   return Number.isNaN(n) ? "N/A" : `₹${n.toLocaleString("en-IN")}`;
 };
 
-const transformScheme = (s, idx) => ({
-  schemeId: s.id,
-  name: s.scheme_name || `Scheme ${s.id}`,
-  description: s.description || s.scheme_description || null,
-  tenure: s.no_of_installment ? Number(s.no_of_installment) : 12,
-  tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
-  membershipFee: s.min_installment_amount ?? null,
-  optedAmount: s.max_instamment_amount ?? s.min_installment_amount ?? null,
-  firstInstallment: s.min_installment_amount ?? null,
-  theme: CARD_THEMES[idx % CARD_THEMES.length],
-});
+const transformScheme = (s, idx) => {
+  const monthlyEmiPerMonth =
+    s.monthly_emi_per_month != null && s.monthly_emi_per_month !== ""
+      ? Number(s.monthly_emi_per_month)
+      : null;
+  return {
+    schemeId: s.id,
+    name: s.scheme_name || `Scheme ${s.id}`,
+    description: s.description || s.scheme_description || null,
+    tenure: s.no_of_installment ? Number(s.no_of_installment) : 12,
+    tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
+    monthlyEmiPerMonth: monthlyEmiPerMonth != null && Number.isFinite(monthlyEmiPerMonth) ? monthlyEmiPerMonth : null,
+    membershipFee: s.min_installment_amount ?? null,
+    optedAmount: s.max_instamment_amount ?? s.min_installment_amount ?? null,
+    firstInstallment: s.min_installment_amount ?? null,
+    theme: CARD_THEMES[idx % CARD_THEMES.length],
+  };
+};
 
 /* ───────────────────── Icon component ───────────────────── */
 function ThemeIcon({ theme }) {
@@ -211,7 +219,11 @@ export default function Schemes() {
           schemeName: item.name,
           tenure: item.tenure,
           membershipFee: item.membershipFee,
-          defaultEmi: item.optedAmount ?? item.firstInstallment ?? 5000,
+          defaultEmi:
+            item.monthlyEmiPerMonth != null && Number.isFinite(item.monthlyEmiPerMonth)
+              ? item.monthlyEmiPerMonth
+              : item.optedAmount ?? item.firstInstallment ?? 5000,
+          monthlyEmiPerMonth: item.monthlyEmiPerMonth,
           userId,
         },
       }),

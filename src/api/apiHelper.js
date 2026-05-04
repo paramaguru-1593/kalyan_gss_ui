@@ -75,6 +75,10 @@ export const getSchemesByMobileNumber = (mobileNumber) =>
 export const getCustomerKycInfo = (mobileNo) =>
   POST(ApiEndpoits.customerKycInfo, { mobile_no: mobileNo });
 
+// Nominee details by customer id (POST /v2/nomineedetails)
+export const getNomineeDetails = (customerId) =>
+  POST(ApiEndpoits.nomineeDetails, { customer_id: String(customerId ?? "") });
+
 // Get customer details by mobile (optional: DocumentType, DocumentNumber)
 export const getCustomerDetails = (payload) =>
   POST(ApiEndpoits.getCustomerDetails, payload);
@@ -98,6 +102,16 @@ export const getProfileCompleteness = (mobileNumber) =>
 // Get customer ledger report by enrollment number
 export const getCustomerLedgerReport = (enrollmentNo) =>
   GET(ApiEndpoits.getCustomerLedgerReport, { params: { EnrollmentNo: enrollmentNo } });
+
+// Get payment information by enrollment id
+export const getPaymentInformation = (enrollmentId) =>
+  GET(ApiEndpoits.getPaymentInformation, { EnrollmentID: Number(enrollmentId) || 0 });
+
+// Get account information by enrollment id
+export const getAccountInformation = (enrollmentId) =>
+  GET(ApiEndpoits.getAccountInformation, {
+    params: { EnrollmentID: String(enrollmentId ?? "") },
+  });
 
 // Get pincode details (state/city lookup)
 export const getPincodeDetails = (pincode) =>

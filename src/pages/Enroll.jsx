@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { FaArrowLeft, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { POST, getCustomerKycInfo } from "../api/apiHelper";
+import { POST, getCustomerKycInfo, getNomineeDetails } from "../api/apiHelper";
+import { isNomineeDetailsApiSuccess, mapNomineeApiDataToEnrollFields } from "../utils/nomineeDetailsMapping";
 import ApiEndpoints from "../api/apiEndPoints";
 import Constants from "../utils/constants";
 
@@ -45,9 +47,26 @@ export default function Enroll() {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const prefillNomineeRef = useRef(false);
+  /** customerId -> attempted /v2/nomineedetails (success or fail) */
+  const nomineeApiAttemptedForCustomer = useRef({});
+  const kycPrefilledForMobile = useRef(null);
 
   const schemeName = state.schemeName || "Scheme";
+
+  const schemesRaw = useSelector((s) => s.scheme?.schemes?.data ?? []);
+
+  /** `monthly_emi_per_month` from navigation or Redux (storebasedscheme_data) for this scheme */
+  const monthlyEmiPerMonthDisplay = useMemo(() => {
+    if (state.monthlyEmiPerMonth != null && state.monthlyEmiPerMonth !== "") {
+      const n = Number(state.monthlyEmiPerMonth);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (schemeId === "" || schemeId == null) return null;
+    const row = schemesRaw.find((x) => String(x.id) === String(schemeId));
+    if (row?.monthly_emi_per_month == null || row?.monthly_emi_per_month === "") return null;
+    const n = Number(row.monthly_emi_per_month);
+    return Number.isFinite(n) ? n : null;
+  }, [state.monthlyEmiPerMonth, schemeId, schemesRaw]);
 
   useEffect(() => {
     const custId = localStorage.getItem('customerId') || "";
@@ -63,17 +82,41 @@ export default function Enroll() {
     if (state.defaultEmi != null && state.defaultEmi !== undefined) {
       setEmiAmount(Number(state.defaultEmi));
     }
-  }, [state.schemeId, state.tenure, state.defaultEmi]);
+  }, [state.schemeId, state.tenure, state.defaultEmi, state.monthlyEmiPerMonth]);
 
   useEffect(() => {
-    if (prefillNomineeRef.current) return;
     if (!mobileNo || mobileNo.length !== 10) return;
+    let cancelled = false;
 
-    getCustomerKycInfo(mobileNo)
-      .then((res) => {
+    (async () => {
+      if (customerId && !nomineeApiAttemptedForCustomer.current[customerId]) {
+        nomineeApiAttemptedForCustomer.current[customerId] = true;
+        const nres = await getNomineeDetails(customerId);
+        if (cancelled) return;
+        if (isNomineeDetailsApiSuccess(nres)) {
+          const m = mapNomineeApiDataToEnrollFields(nres.data.data);
+          setNomineeFirstName((prev) => (prev.trim() ? prev : m.nomineeFirstName));
+          setNomineeLastName((prev) => (prev.trim() ? prev : m.nomineeLastName));
+          setNomineeMobileNo((prev) => (prev.trim() ? prev : m.nomineeMobileNo));
+          setNomineeRelation((prev) => (prev.trim() ? prev : m.nomineeRelation));
+          setNomineePincodeId((prev) => (prev.trim() ? prev : m.nomineePincodeId));
+          setNomineeState((prev) => (prev.trim() ? prev : m.nomineeState));
+          setNomineeDistrict((prev) => (prev.trim() ? prev : m.nomineeDistrict));
+          setNomineeCity((prev) => (prev.trim() ? prev : m.nomineeCity));
+          setNomineeStreet((prev) => (prev.trim() ? prev : m.nomineeStreet));
+          setNomineeHouseNo((prev) => (prev.trim() ? prev : m.nomineeHouseNo));
+          return;
+        }
+      }
+
+      if (kycPrefilledForMobile.current === mobileNo) return;
+
+      try {
+        const res = await getCustomerKycInfo(mobileNo);
+        if (cancelled) return;
         const cd = res?.data?.customer_details;
         if (!cd) return;
-        prefillNomineeRef.current = true;
+        kycPrefilledForMobile.current = mobileNo;
 
         const nd = cd?.nominee_details || {};
 
@@ -83,7 +126,6 @@ export default function Enroll() {
           (r) => r.toLowerCase() === relNorm.toLowerCase()
         ) || "";
 
-        // Name mapping
         const nf = (nd?.nominee_first_name ?? "").toString().trim();
         const nl = (nd?.nominee_last_name ?? "").toString().trim();
         const fullNomineeName = (nd?.nominee_name ?? "").toString().trim();
@@ -105,7 +147,6 @@ export default function Enroll() {
         setNomineeMobileNo((prev) => (prev.trim() ? prev : nomineeMobileVal));
         setNomineeRelation((prev) => (prev.trim() ? prev : nomineeRel));
 
-        // Address mapping: handle object-based addresses and also do a light best-effort parse for strings.
         const addr = nd?.nominee_address ?? {};
         const addrObj =
           typeof addr === "object" && addr !== null
@@ -167,10 +208,8 @@ export default function Enroll() {
             .map((p) => p.trim())
             .filter(Boolean);
 
-          // Best-effort guess: [street/house, city, district, state, ...]
           if (parts[0]) {
             setNomineeStreet((prev) => (prev.trim() ? prev : parts[0]));
-            // Try extracting a house/flat number from the street line.
             const houseMatch = parts[0].match(/\b(\d+[A-Za-z0-9/-]*)\b/);
             if (houseMatch?.[1]) {
               setNomineeHouseNo((prev) => (prev.trim() ? prev : houseMatch[1]));
@@ -180,10 +219,13 @@ export default function Enroll() {
           if (parts[2]) setNomineeDistrict((prev) => (prev.trim() ? prev : parts[2]));
           if (parts[3]) setNomineeState((prev) => (prev.trim() ? prev : parts[3]));
         }
-      })
-      .catch(() => {})
-      .finally(() => {});
-  }, [mobileNo]);
+      } catch (_) {}
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNo, customerId]);
 
   const handleNomineeMobileChange = (e) => {
     const v = e.target.value.replace(/\D/g, "").slice(0, 10);
@@ -231,6 +273,7 @@ export default function Enroll() {
     }
     setError("");
     setLoading(true);
+    const externalId = `ENROLL_${Date.now()}`;
 
     const payload = {
       scheme_id: Number(schemeId),
@@ -239,6 +282,7 @@ export default function Enroll() {
       tenure: Number(tenure),
       emi_amount: String(emiAmount),
       mode_of_pay: modeOfPay,
+      externalId: externalId,
       nominee_first_name: nomineeFirstName.trim(),
       nominee_last_name: nomineeLastName.trim(),
       nominee_mobile_no: nomineeMobileNo,
@@ -305,6 +349,14 @@ export default function Enroll() {
             <h2 className="text-sm font-medium text-gray-700 mb-2">
               Opted Amount for Month
             </h2>
+            {monthlyEmiPerMonthDisplay != null && (
+              <p className="text-center text-sm text-gray-600 mb-3">
+                Monthly EMI (per month) — scheme:{" "}
+                <span className="font-semibold text-gray-900">
+                  ₹{monthlyEmiPerMonthDisplay.toLocaleString("en-IN")}
+                </span>
+              </p>
+            )}
             <div className="text-center py-4">
               <span className="text-3xl md:text-4xl font-bold text-gray-900">
                 ₹{emiAmount.toLocaleString("en-IN")}

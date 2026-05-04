@@ -8,9 +8,8 @@ import {
   FaWallet,
   FaCheckCircle,
   FaCreditCard,
-  FaReceipt,
 } from "react-icons/fa";
-import { GET, getCustomerLedgerReport } from "../api/apiHelper";
+import { GET, getAccountInformation, getCustomerLedgerReport } from "../api/apiHelper";
 import ApiEndpoints from "../api/apiEndPoints";
 import Loader from "../components/Loader";
 
@@ -44,21 +43,55 @@ export default function SchemeDetails() {
     );
   }
 
-  const collections = enrollment.collections || [];
   const accountNo = String(enrollment.EnrollmentID || "");
 
-  const [ledgerData, setLedgerData] = useState(null);
+  const [accountInfo, setAccountInfo] = useState(null);
+  const [accountLoading, setAccountLoading] = useState(true);
+  const [accountError, setAccountError] = useState(null);
+  const [collectionsData, setCollectionsData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(true);
   const [ledgerError, setLedgerError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(null);
   const [error, setError] = useState("");
 
-  // Fetch customer ledger report by enrollment no (single API; loader until complete).
+  // Fetch account information by enrollment id for scheme/customer details.
+  useEffect(() => {
+    if (!accountNo) {
+      setAccountLoading(false);
+      setAccountInfo(null);
+      return;
+    }
+    setAccountLoading(true);
+    setAccountError(null);
+    getAccountInformation(accountNo)
+      .then((res) => {
+        if (res?.status !== 200) {
+          setAccountError(res?.data?.error?.message || "Failed to load account details");
+          setAccountInfo(null);
+          return;
+        }
+        const err = res?.data?.error;
+        if (err && Number(err.status) !== 200) {
+          setAccountError(err.message || err.description || "Account details unavailable");
+          setAccountInfo(null);
+          return;
+        }
+        const info = Array.isArray(res?.data?.data) ? res.data.data[0] : res?.data?.data;
+        setAccountInfo(info || null);
+      })
+      .catch(() => {
+        setAccountError("Failed to load account details");
+        setAccountInfo(null);
+      })
+      .finally(() => setAccountLoading(false));
+  }, [accountNo]);
+
+  // Fetch customer ledger report by enrollment no (collections only).
   useEffect(() => {
     if (!accountNo) {
       setLedgerLoading(false);
-      setLedgerData(null);
+      setCollectionsData(null);
       return;
     }
     setLedgerLoading(true);
@@ -67,21 +100,21 @@ export default function SchemeDetails() {
       .then((res) => {
         if (res?.status !== 200) {
           setLedgerError(res?.data?.error?.message || "Failed to load ledger");
-          setLedgerData(null);
+          setCollectionsData(null);
           return;
         }
         const err = res.data?.error;
         if (err && err.status !== 200) {
           setLedgerError(err.message || err.description || "Ledger unavailable");
-          setLedgerData(null);
+          setCollectionsData(null);
           return;
         }
         const data = res.data?.data ?? res.data?.Response?.data ?? res.data;
-        setLedgerData(data || null);
+        setCollectionsData(data || null);
       })
       .catch(() => {
         setLedgerError("Failed to load ledger");
-        setLedgerData(null);
+        setCollectionsData(null);
       })
       .finally(() => setLedgerLoading(false));
   }, [accountNo]);
@@ -97,7 +130,7 @@ export default function SchemeDetails() {
   };
 
   const handlePayAndRegister = async () => {
-    const emiAmount = enrollment.EMIAmount || 0;
+    const emiAmount = accountInfo?.EMIAmount ?? enrollment.EMIAmount ?? 0;
     let email = null;
     try {
       const profile = localStorage.getItem("profile");
@@ -157,8 +190,19 @@ export default function SchemeDetails() {
     }
   };
 
-  const paymentStatus = ledgerData?.PaymentStatus ?? ledgerData?.paymentStatus;
-  const ledgerCollections = ledgerData?.Response?.Collections ?? ledgerData?.Response?.collections ?? [];
+  const fullName = [accountInfo?.FirstName, accountInfo?.LastName].filter(Boolean).join(" ").trim();
+  const accountAddress = [
+    accountInfo?.current_house_no,
+    accountInfo?.current_street,
+    accountInfo?.current_post_office,
+    accountInfo?.current_city,
+    accountInfo?.current_district,
+    accountInfo?.current_state,
+    accountInfo?.current_pincode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const ledgerCollections = collectionsData?.Response?.Collections ?? collectionsData?.Response?.collections ?? [];
   const collectionsList = Array.isArray(ledgerCollections) && ledgerCollections.length > 0
     ? ledgerCollections
     : (enrollment.collections || []);
@@ -167,13 +211,8 @@ export default function SchemeDetails() {
     (c) => (c.PaymentStatus ?? c.paymentStatus ?? "").toString().toLowerCase() !== "completed"
   );
 
-  const isPaymentCompleted =
-    (paymentStatus === "Completed" || paymentStatus === "completed") &&
-    !hasAnyIncompletePayment;
+  const isPaymentCompleted = collectionsList.length > 0 && !hasAnyIncompletePayment;
   const showPayButton = hasAnyIncompletePayment;
-
-  const ledgerEntries = ledgerData?.ledger ?? ledgerData?.Ledger ?? ledgerData?.entries ?? [];
-  const customerDetails = ledgerData?.customer ?? ledgerData?.Customer ?? ledgerData?.customerDetails ?? {};
 
   return (
     <div className="">
@@ -211,19 +250,25 @@ export default function SchemeDetails() {
             </div>
           )}
 
-          {ledgerLoading && (
-            <Loader message="Loading ledger..." />
+          {(accountLoading || ledgerLoading) && (
+            <Loader message={accountLoading ? "Loading scheme details..." : "Loading collections..."} />
           )}
 
-          {!ledgerLoading && ledgerError && !ledgerData && (
+          {!accountLoading && accountError && !accountInfo && (
             <div className="mx-6 mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              {ledgerError} — Showing enrollment details only.
+              {accountError} — Showing enrollment details only.
             </div>
           )}
 
-          {!ledgerLoading && (
+          {!ledgerLoading && ledgerError && !collectionsData && (
+            <div className="mx-6 mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+              {ledgerError} — Showing available collection details only.
+            </div>
+          )}
+
+          {!accountLoading && !ledgerLoading && (
           <div className="p-6 space-y-8">
-            {/* User / Customer details from ledger or enrollment */}
+            {/* Customer details from account information API */}
             <section>
               <h2 className="font-semibold text-slate-800 mb-3 flex items-center gap-2 text-base">
                 <FaUser className="text-amber-500" /> Customer Details
@@ -232,16 +277,16 @@ export default function SchemeDetails() {
                 <Row
                   label="Name"
                   value={
-                    customerDetails?.name ??
-                    customerDetails?.CustomerName ??
-                    ([enrollment.NomineeFirstName, enrollment.NomineeLastName].filter(Boolean).join(" ") || "—")
+                    fullName || enrollment.CustomerName || "—"
                   }
                 />
-                <Row label="Relationship" value={customerDetails?.relationship ?? enrollment.NomineeRelationship} />
-                <Row label="Mobile" value={customerDetails?.mobile ?? customerDetails?.MobileNumber ?? enrollment.NomineeMobileNumber} />
-                <Row label="Email" value={customerDetails?.email ?? customerDetails?.EmailAddress ?? enrollment.NomineeEmailAddress} />
-                {(customerDetails?.address ?? enrollment.NomineeAddress) && (
-                  <Row label="Address" value={customerDetails?.address ?? enrollment.NomineeAddress} />
+                <Row label="Mobile" value={accountInfo?.MobileNumber ?? enrollment.MobileNo ?? "—"} />
+                <Row
+                  label="ID Proof"
+                  value={[accountInfo?.IDProof, accountInfo?.id_proof_number].filter(Boolean).join(" - ") || "—"}
+                />
+                {accountAddress && (
+                  <Row label="Address" value={accountAddress} />
                 )}
               </div>
             </section>
@@ -252,16 +297,18 @@ export default function SchemeDetails() {
                 <FaCoins className="text-amber-500" /> Scheme Details
               </h2>
               <div className="bg-slate-50/80 rounded-xl p-5 border border-slate-100 space-y-0">
-                <Row label="Status" value={enrollment.Status} />
-                <Row label="EMI Amount" value={`₹${Number(enrollment.EMIAmount || 0).toLocaleString()}`} />
-                <Row label="Tenure" value={`${enrollment.NoMonths || 0} months`} />
-                <Row label="Total Paid" value={`₹${Number(enrollment.TotalPaidAmount || 0).toLocaleString()}`} />
-                <Row label="Final Redeemable Amount" value={`₹${Number(enrollment.FinalRedeemableAmount || 0).toLocaleString()}`} />
-                <Row label="Enrollment Gold Rate" value={`₹${Number(enrollment.EnrollmentDayGoldRate || 0).toLocaleString()}/gm`} />
+                <Row label="Scheme Name" value={accountInfo?.SchemeName ?? enrollment.PlanType} />
+                <Row label="Status" value={accountInfo?.Status ?? enrollment.Status} />
+                <Row label="EMI Amount" value={`₹${Number(accountInfo?.EMIAmount ?? enrollment.EMIAmount ?? 0).toLocaleString()}`} />
+                <Row label="Tenure" value={`${accountInfo?.Tenure ?? accountInfo?.NoOfInstallments ?? enrollment.NoMonths ?? 0} months`} />
+                <Row label="Total Amount" value={`₹${Number(accountInfo?.TotalAmount ?? enrollment.FinalRedeemableAmount ?? 0).toLocaleString()}`} />
+                <Row label="Amount Paid" value={`₹${Number(accountInfo?.AmountPaid ?? enrollment.TotalPaidAmount ?? 0).toLocaleString()}`} />
+                <Row label="Remaining Amount" value={`₹${Number(accountInfo?.RemainingAmount ?? 0).toLocaleString()}`} />
+                <Row label="Gold Rate" value={`₹${Number(accountInfo?.gold_rate ?? enrollment.EnrollmentDayGoldRate ?? 0).toLocaleString()}/gm`} />
                 <Row label="Initial MOP" value={enrollment.InitialMOP} />
-                <Row label="Scheme Efficiency" value={enrollment.SchemeEfficientType} />
-                {enrollment.ReasonForInEfficient && (
-                  <Row label="Reason" value={enrollment.ReasonForInEfficient} />
+                <Row label="Scheme Efficiency" value={accountInfo?.SchemeEfficientType ?? enrollment.SchemeEfficientType} />
+                {(accountInfo?.ReasonForInEfficient || enrollment.ReasonForInEfficient) && (
+                  <Row label="Reason" value={accountInfo?.ReasonForInEfficient ?? enrollment.ReasonForInEfficient} />
                 )}
               </div>
             </section>
@@ -272,44 +319,13 @@ export default function SchemeDetails() {
                 <FaCalendarAlt className="text-amber-500" /> Dates
               </h2>
               <div className="bg-slate-50/80 rounded-xl p-5 border border-slate-100 space-y-0">
-                <Row label="Join Date" value={formatDate(enrollment.JoinDate)} />
-                <Row label="End Date" value={formatDate(enrollment.EndDate)} />
-                {enrollment.DebitDate && <Row label="Debit Date" value={enrollment.DebitDate} />}
+                <Row label="Join Date" value={formatDate(accountInfo?.JoinDate ?? enrollment.JoinDate)} />
+                <Row label="Maturity Date" value={formatDate(accountInfo?.MaturityDate ?? enrollment.EndDate)} />
+                {(accountInfo?.DebitDate || enrollment.DebitDate) && (
+                  <Row label="Debit Date" value={accountInfo?.DebitDate ?? enrollment.DebitDate} />
+                )}
               </div>
             </section>
-
-            {/* Ledger entries from API (if present) */}
-            {Array.isArray(ledgerEntries) && ledgerEntries.length > 0 && (
-              <section>
-                <h2 className="font-semibold text-slate-800 mb-3 flex items-center gap-2 text-base">
-                  <FaReceipt className="text-amber-500" /> Ledger
-                </h2>
-                <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-amber-50 text-amber-900">
-                        <th className="text-left py-3 px-4 font-semibold">Date</th>
-                        <th className="text-left py-3 px-4 font-semibold">Particulars</th>
-                        <th className="text-right py-3 px-4 font-semibold">Debit</th>
-                        <th className="text-right py-3 px-4 font-semibold">Credit</th>
-                        <th className="text-right py-3 px-4 font-semibold">Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ledgerEntries.map((row, i) => (
-                        <tr key={i} className="border-t border-slate-100 hover:bg-slate-50/50">
-                          <td className="py-3 px-4">{formatDate(row.Date ?? row.date ?? row.TransactionDate)}</td>
-                          <td className="py-3 px-4">{row.Particulars ?? row.particulars ?? row.Description ?? "—"}</td>
-                          <td className="py-3 px-4 text-right font-medium">{row.Debit != null ? `₹${Number(row.Debit).toLocaleString()}` : "—"}</td>
-                          <td className="py-3 px-4 text-right font-medium">{row.Credit != null ? `₹${Number(row.Credit).toLocaleString()}` : "—"}</td>
-                          <td className="py-3 px-4 text-right font-medium">{row.Balance != null ? `₹${Number(row.Balance).toLocaleString()}` : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
 
             {/* Collections (from ledger API or enrollment) */}
             <section>
@@ -417,12 +433,12 @@ export default function SchemeDetails() {
                     state: {
                       source: "enroll",
                       schemeType: enrollment.PlanType,
-                      customerId: enrollment.CustomerID || "",
+                      customerId: accountInfo?.CustomerID || enrollment.CustomerID || "",
                       enrollmentId: accountNo,
                       transactionRef: paymentSuccess.receiptId,
-                      amount: enrollment.EMIAmount || 0,
-                      fullName: enrollment.CustomerName || "",
-                      mobileNumber: enrollment.MobileNo || "",
+                      amount: accountInfo?.EMIAmount ?? enrollment.EMIAmount ?? 0,
+                      fullName: fullName || enrollment.CustomerName || "",
+                      mobileNumber: accountInfo?.MobileNumber || enrollment.MobileNo || "",
                       emailAddress: enrollment.NomineeEmailAddress || null,
                     },
                   })

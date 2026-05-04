@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { FaUpload, FaDownload } from "react-icons/fa";
-import { updateCustomerKyc, getCustomerDetails } from "../../api/apiHelper";
+import { updateCustomerKyc, getCustomerKycInfo } from "../../api/apiHelper";
 import Constants from "../../utils/constants";
 import OnboardingLayout from "../../components/onboarding/OnboardingLayout";
 import FormFooterButtons from "../../components/onboarding/FormFooterButtons";
@@ -86,7 +86,7 @@ export default function KycDetailsStep() {
     },
   });
 
-  // Fetch getCustomerDetails on mount to prefill KYC and show uploaded documents (download)
+  // Fetch customerkycinfo on mount to prefill KYC and show uploaded docs.
   useEffect(() => {
     let mobile = "";
     try {
@@ -99,21 +99,31 @@ export default function KycDetailsStep() {
       return;
     }
     setDetailsLoading(true);
-    getCustomerDetails({ MobileNo: mobile })
+    getCustomerKycInfo(mobile)
       .then((res) => {
-        if (res && res.status === 200 && res.data?.StatusCode === 200 && Array.isArray(res.data.Data) && res.data.Data.length > 0) {
-          const docs = res.data.Data[0].Documents || [];
+        if (!(res && res.status === 200)) return;
+
+        const kyc = res?.data?.kyc_details || res?.data?.customer_details?.kyc_details || null;
+        if (kyc) {
+          const idProofTypeNum = kyc.id_proof_type !== undefined ? Number(kyc.id_proof_type) : 1;
+          setKycPrefill({
+            id_proof_type: idProofTypeNum,
+            id_proof_number: kyc.id_proof_number ?? "",
+            id_proof_front_side: kyc.id_proof_front_side ?? "",
+            id_proof_back_side: kyc.id_proof_back_side ?? "",
+          });
+
+          const docTypeMap = { 1: "Pan Card", 2: "Aadhar", 3: "Voter ID", 7: "Driving Licence" };
+          const docs = kyc.id_proof_front_side
+            ? [
+                {
+                  DocumentType: docTypeMap[idProofTypeNum] || "Document",
+                  DocumentNo: kyc.id_proof_number ?? "",
+                  DocumentUrlFront: kyc.id_proof_front_side,
+                },
+              ]
+            : [];
           setKycDocuments(docs);
-          if (docs.length > 0) {
-            const doc = docs[0];
-            const docTypeMap = { PanCard: 1, Aadhar: 2, "Voter ID": 3, DrivingLicence: 7 };
-            const idProofTypeNum = docTypeMap[doc.DocumentType] ?? 1;
-            setKycPrefill({
-              id_proof_type: idProofTypeNum,
-              id_proof_number: doc.DocumentNo ?? "",
-              id_proof_front_side: doc.DocumentUrlFront ?? "",
-            });
-          }
         }
       })
       .catch(() => {})

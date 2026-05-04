@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import Images from "../images/images";
 import Constants from "../utils/constants";
-import { sendOtp, verifyOtp } from "../api/apiHelper";
+import { getCustomerKycInfo, getNomineeDetails, sendOtp, verifyOtp } from "../api/apiHelper";
+import { isNomineeDetailsApiSuccess, mapNomineeApiDataToProfilePrefill } from "../utils/nomineeDetailsMapping";
 
 export default function Otp() {
   const navigate = useNavigate();
@@ -19,6 +20,84 @@ export default function Otp() {
   const [countdown, setCountdown] = useState(0); // seconds remaining; 0 = can resend
 
   const inputRefs = useRef([]);
+
+  const syncProfileFromApi = async (mobileNo) => {
+    if (!mobileNo || String(mobileNo).length < 10) return;
+
+    const existingProfileRaw = localStorage.getItem("profile");
+    let existingProfile = {};
+    try {
+      existingProfile = existingProfileRaw ? JSON.parse(existingProfileRaw) : {};
+    } catch (_) {
+      existingProfile = {};
+    }
+
+    try {
+      const customerRes = await getCustomerKycInfo(mobileNo);
+      if (customerRes?.status === 200 && customerRes?.data?.customer_details) {
+        const cd = customerRes.data.customer_details;
+        const addr = cd.address?.current_address ?? cd.address ?? {};
+        const firstName = String(cd.first_name ?? "").trim();
+        const lastName = String(cd.last_name ?? "").trim();
+        const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+        const profileFromCustomer = {
+          ...existingProfile,
+          first_name: firstName,
+          last_name: lastName,
+          fullName: fullName || existingProfile.fullName || "",
+          mobileNumber: cd.mobile_no ?? cd.mobileNo ?? mobileNo,
+          emailAddress: cd.emailId ?? cd.email ?? "",
+          dateOfBirth: cd.date_of_birth ?? cd.dateOfBirth ?? "",
+          gender: cd.gender
+            ? String(cd.gender).charAt(0).toUpperCase() + String(cd.gender).slice(1)
+            : existingProfile.gender || "Male",
+          address: addr.current_street ?? addr.street ?? "",
+          city: addr.current_city ?? addr.city ?? "",
+          stateName: addr.current_state ?? addr.state ?? "",
+          pincode:
+            addr.current_pincode != null
+              ? String(addr.current_pincode)
+              : addr.pincode != null
+                ? String(addr.pincode)
+                : "",
+          nomineeName: cd.nominee_details?.nominee_name ?? "",
+          nomineeRelationship: cd.nominee_details?.relation_of_nominee ?? "",
+          nomineeDob: cd.nominee_details?.nominee_dob ?? "",
+          nomineeAddress: cd.nominee_details?.nominee_address ?? "",
+          nomineeContact: cd.nominee_details?.nominee_mobile_number ?? "",
+        };
+
+        localStorage.setItem("profile", JSON.stringify(profileFromCustomer));
+      }
+    } catch (_) {
+      // Ignore profile prefill failures; login flow must continue.
+    }
+
+    try {
+      const customerId = localStorage.getItem("customerId") || "";
+      if (!customerId) return;
+      const nomineeRes = await getNomineeDetails(customerId);
+      if (!isNomineeDetailsApiSuccess(nomineeRes)) return;
+
+      const mappedNominee = mapNomineeApiDataToProfilePrefill(nomineeRes.data.data);
+      const latestProfileRaw = localStorage.getItem("profile");
+      const latestProfile = latestProfileRaw ? JSON.parse(latestProfileRaw) : {};
+
+      localStorage.setItem(
+        "profile",
+        JSON.stringify({
+          ...latestProfile,
+          nomineeName: mappedNominee.nominee_name ?? latestProfile.nomineeName ?? "",
+          nomineeRelationship: mappedNominee.relation_of_nominee ?? latestProfile.nomineeRelationship ?? "",
+          nomineeAddress: mappedNominee.nomineeAddress ?? latestProfile.nomineeAddress ?? "",
+          nomineeContact: mappedNominee.nomineeContact ?? latestProfile.nomineeContact ?? "",
+        })
+      );
+    } catch (_) {
+      // Ignore nominee fallback failures; profile can still be edited later.
+    }
+  };
 
   // Countdown timer: decrement every second until 0
   useEffect(() => {
@@ -133,6 +212,7 @@ export default function Otp() {
             }
           })();
         setInfo(response.data.message || "OTP verified successfully.");
+        await syncProfileFromApi(mobileNumber);
         setTimeout(() => {
           navigate(kycUpdated ? "/home" : "/onboarding/personal-details", { state: { mobile: mobileNumber } });
         }, 800);

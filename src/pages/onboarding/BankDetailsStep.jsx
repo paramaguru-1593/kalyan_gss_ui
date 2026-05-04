@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { FaUpload } from "react-icons/fa";
-import { updateCustomerBankDetails } from "../../api/apiHelper";
+import { getCustomerKycInfo, updateCustomerBankDetails } from "../../api/apiHelper";
+import Constants from "../../utils/constants";
 import OnboardingLayout from "../../components/onboarding/OnboardingLayout";
 import FormFooterButtons from "../../components/onboarding/FormFooterButtons";
 import { getInitialBankValues } from "./onboardingFormUtils";
@@ -32,10 +33,13 @@ export default function BankDetailsStep() {
   const [bankBookFileName, setBankBookFileName] = useState("");
   const [apiError, setApiError] = useState("");
   const [apiLoading, setApiLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(true);
+  const [bankPrefill, setBankPrefill] = useState(null);
 
   const formik = useFormik({
-    initialValues: getInitialBankValues(),
+    initialValues: { ...getInitialBankValues(), ...(bankPrefill || {}) },
     validationSchema: bankValidationSchema,
+    enableReinitialize: true,
     onSubmit: async (values) => {
       setApiError("");
       setApiLoading(true);
@@ -63,6 +67,40 @@ export default function BankDetailsStep() {
     },
   });
 
+  useEffect(() => {
+    let mobile = "";
+    try {
+      const stored = localStorage.getItem("profile");
+      if (stored) mobile = JSON.parse(stored).mobileNumber || "";
+      if (!mobile) mobile = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
+    } catch (_) {}
+
+    if (!mobile || mobile.length < 10) {
+      setDetailsLoading(false);
+      return;
+    }
+
+    setDetailsLoading(true);
+    getCustomerKycInfo(mobile)
+      .then((res) => {
+        if (!(res && res.status === 200)) return;
+        const b = res?.data?.bank_details || res?.data?.customer_details?.bank_details || null;
+        if (!b) return;
+        setBankPrefill({
+          mobile_no: b.mobile_no ?? mobile,
+          bank_account_no: b.bank_account_no ?? "",
+          account_holder_name: b.account_holder_name ?? "",
+          account_holder_name_bank: b.account_holder_name_bank ?? "",
+          ifsc_code: b.ifsc_code ?? "",
+          name_match_percentage:
+            b.name_match_percentage != null ? String(b.name_match_percentage) : "",
+          file: b.file ?? "",
+        });
+      })
+      .catch(() => {})
+      .finally(() => setDetailsLoading(false));
+  }, []);
+
   const handleBankBookFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,6 +121,9 @@ export default function BankDetailsStep() {
 
   return (
     <OnboardingLayout title="Bank Details" subtitle="Step 3 of 3" maxWidth="max-w-lg">
+      {detailsLoading ? (
+        <div className="bg-amber-50 rounded-xl p-8 shadow-md text-center text-gray-500">Loading bank details...</div>
+      ) : (
       <form onSubmit={formik.handleSubmit} className="bg-amber-50 rounded-xl p-5 shadow-md space-y-4">
         <div>
           <label className={labelClass}>Customer&apos;s Mobile Number <span className="text-red-500">*</span></label>
@@ -214,6 +255,7 @@ export default function BankDetailsStep() {
           submitDisabled={false}
         />
       </form>
+      )}
     </OnboardingLayout>
   );
 }

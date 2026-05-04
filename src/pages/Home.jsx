@@ -308,15 +308,26 @@ export default function Home() {
     };
   }, []);
 
-  const transformRecommend = useCallback((s, i) => ({
-    schemeId: s.id,
-    name: s.scheme_name || `Scheme ${s.id}`,
-    tenure: s.no_of_installment ? Number(s.no_of_installment) : 12,
-    tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
-    monthlyAmount: s.min_installment_amount ?? s.max_instamment_amount ?? 0,
-    membershipFee: s.min_installment_amount ?? null,
-    theme: CARD_THEMES[i % CARD_THEMES.length],
-  }), []);
+  const transformRecommend = useCallback((s, i) => {
+    const monthlyEmiPerMonth =
+      s.monthly_emi_per_month != null && s.monthly_emi_per_month !== ""
+        ? Number(s.monthly_emi_per_month)
+        : null;
+    const monthlyAmount =
+      monthlyEmiPerMonth != null && Number.isFinite(monthlyEmiPerMonth)
+        ? monthlyEmiPerMonth
+        : s.min_installment_amount ?? s.max_instamment_amount ?? 0;
+    return {
+      schemeId: s.id,
+      name: s.scheme_name || `Scheme ${s.id}`,
+      tenure: s.no_of_installment ? Number(s.no_of_installment) : 12,
+      tenureStr: s.no_of_installment ? String(s.no_of_installment) : "-",
+      monthlyEmiPerMonth: monthlyEmiPerMonth != null && Number.isFinite(monthlyEmiPerMonth) ? monthlyEmiPerMonth : null,
+      monthlyAmount,
+      membershipFee: s.min_installment_amount ?? null,
+      theme: CARD_THEMES[i % CARD_THEMES.length],
+    };
+  }, []);
 
   const recommendedSchemes = useMemo(() => {
     const data = schemesState.data;
@@ -433,6 +444,7 @@ export default function Home() {
                           tenure: item.tenure,
                           membershipFee: item.membershipFee,
                           defaultEmi: item.monthlyAmount,
+                          monthlyEmiPerMonth: item.monthlyEmiPerMonth,
                         },
                       })
                     }

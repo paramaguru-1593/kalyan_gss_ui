@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { FaArrowLeft, FaUpload, FaCheckCircle, FaDownload } from "react-icons/fa";
-import { getCustomerDetails, getCustomerKycInfo, updateCustomerBankDetails, updateCustomerKyc } from "../api/apiHelper";
+import { getCustomerDetails, getCustomerKycInfo, getNomineeDetails, updateCustomerBankDetails, updateCustomerKyc } from "../api/apiHelper";
+import { isNomineeDetailsApiSuccess, mapNomineeApiDataToProfilePrefill } from "../utils/nomineeDetailsMapping";
 import Constants from "../utils/constants";
 import { updatePersonalDetails } from "../store/scheme/schemesApi";
 import DatePickerField from "../components/DatePickerField";
@@ -374,8 +375,8 @@ export default function ProfileEdit() {
     let mobile = "";
     try {
       const stored = localStorage.getItem("profile");
-      if (stored) mobile = JSON.parse(stored).mobileNumber || "";
-      if (!mobile) mobile = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
+      mobile = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
+      // if (!mobile) mobile = localStorage.getItem(Constants.localStorageKey.mobileNumber) || "";
     } catch (_) {}
     if (!mobile || mobile.length < 10) {
       setKycLoading(false);
@@ -433,6 +434,18 @@ export default function ProfileEdit() {
               name_match_percentage: b.name_match_percentage ?? "",
             });
           }
+        }
+      })
+      .catch(() => {})
+      .then(() => {
+        const customerId = localStorage.getItem("customerId") || "";
+        if (!customerId) return null;
+        return getNomineeDetails(customerId);
+      })
+      .then((nres) => {
+        if (nres && isNomineeDetailsApiSuccess(nres)) {
+          const mapped = mapNomineeApiDataToProfilePrefill(nres.data.data);
+          setPersonalPrefill((prev) => ({ ...(prev || {}), ...mapped }));
         }
       })
       .catch(() => {})
